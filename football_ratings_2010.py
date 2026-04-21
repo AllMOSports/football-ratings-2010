@@ -4,121 +4,156 @@ import json
 import csv
 import re
 import pandas as pd
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 import time
  
+# ---------------------------------------------------------------------------
+# CONFIGURATION
+# ---------------------------------------------------------------------------
+ 
+SEASON_YEAR   = 2010
 SEASON_START  = date(2010, 8, 1)
 SEASON_END    = date(2010, 12, 15)
-BASE_URL      = "https://www.mshsaa.org/activities/scoreboard.aspx?alg=19&date={}"
-MAX_POINTS      = 100
+MAX_POINTS    = 100
 OUTPUT_PATH   = "football_ratings_2010.json"
 CSV_PATH      = "football_scoreboard_2010.csv"
-CLASSIFICATIONS_PATH = "classifications.json"
-SCHOOLS_CSV   = "mshsaa_schools.csv"
-ITERATIONS    = 1000
-LEARNING_RATE = 0.1
+CLASSIFICATIONS_PATH  = "classifications.json"
+SCHOOLS_CSV           = "mshsaa_schools.csv"
+MAPPING_CSV           = "mshsaa_school_sport_mapping.csv"
+ITERATIONS            = 1000
+LEARNING_RATE         = 0.1
 COMPETITIVE_THRESHOLD = 35
  
-# ---------------------------------------------------------------------------
-# SCHOOL ID → CLASSIFICATION NAME LOOKUP
-# ---------------------------------------------------------------------------
-# The MSHSAA scoreboard pages embed a permanent numeric school ID in every
-# team link (e.g. /MySchool/Schedule.aspx?s=257).  That ID never changes
-# even when MSHSAA later renames or merges schools.  We extract the ID from
-# the href and map it to the correct 2010 name stored in classifications.json,
-# completely bypassing the (now-wrong) display text on the page.
-#
-# Name resolution strategy:
-#   1. Strip " High School" suffix from mshsaa_schools.csv names and compare
-#      directly to classifications.json names — covers ~270 schools exactly.
-#   2. Any classification name that does not exact-match is flagged at startup.
-#      Add those schools to MANUAL_ID_OVERRIDES below using their MSHSAA ID.
-#      NO fuzzy matching is used — fuzzy matching caused silent wrong mappings
-#      (e.g. "Scott City" was matched to "Seneca") which corrupted ratings.
-#
-# To find a school's MSHSAA ID:
-#   - Open football_scoreboard_2010.csv after a run
-#   - Find a game row for that school
-#   - Go to that date's MSHSAA scoreboard page in your browser
-#   - Hover over the team link — the URL will contain s=XXXX
-#   - Add "XXXX": "School Name" to MANUAL_ID_OVERRIDES below
- 
-MANUAL_ID_OVERRIDES = {
-    # --- add entries here based on the UNRESOLVED warning at startup ---
-    # Format: "mshsaa_id": "exact name as it appears in classifications.json"
-    # Example: "432": "Scott City",
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Referer": "https://www.mshsaa.org/"
 }
  
-def build_id_to_classname(schools_csv=SCHOOLS_CSV,
-                           classifications_path=CLASSIFICATIONS_PATH):
+# ---------------------------------------------------------------------------
+# LOAD SUPPORT FILES
+# ---------------------------------------------------------------------------
+ 
+def load_classifications(path=CLASSIFICATIONS_PATH):
+    """Return team_to_class and team_to_district dicts keyed by school name."""
+    with open(path) as f:
+        data = json.load(f)
+    team_to_class    = {}
+    team_to_district = {}
+    for entry in data["teams"]:
+        school = entry["school"]
+        team_to_class[school]    = entry["classification"]
+        team_to_district[school] = entry["district"]
+    return team_to_class, team_to_district
+ 
+ 
+def load_school_id_map(schools_csv=SCHOOLS_CSV):
     """
-    Return a dict { school_id_str : classification_name } covering every
-    team in classifications.json that can be resolved to an MSHSAA school ID.
- 
-    Only exact matches (after stripping ' High School') are used.
-    Fuzzy matching is intentionally excluded — it caused silent wrong mappings.
-    Unresolved schools are printed as warnings and must be added to
-    MANUAL_ID_OVERRIDES above.
+    Return a dict { school_id_str : school_name } from mshsaa_schools.csv.
+    Used to resolve opponent names by their s= ID during schedule scraping.
     """
-    schools_df = pd.read_csv(schools_csv)
-    id_by_full = dict(zip(schools_df["school_name"],
-                          schools_df["school_id"].astype(str)))
+    df = pd.read_csv(schools_csv)
+    return dict(zip(df["school_id"].astype(str), df["school_name"]))
  
-    # Build stripped name → id lookup
-    # e.g. "Chaffee High School" → stripped "Chaffee" → id "257"
-    stripped_to_id = {}
-    for full, sid in id_by_full.items():
-        stripped = full.replace(" High School", "").strip()
-        stripped_to_id[stripped] = sid
  
-    with open(classifications_path) as f:
-        class_data = json.load(f)
-    class_names = [e["school"] for e in class_data["teams"]]
+def load_football_schedule_urls(mapping_csv=MAPPING_CSV):
+    """
+    Return a dict { school_name : { url, school_id } } for Football only.
+    Appends &year=SEASON_YEAR to each URL to pull the correct historical season.
+    """
+    df = pd.read_csv(mapping_csv)
+    football = df[df["sport"] == "Football"]
+    urls = {}
+    for _, row in football.iterrows():
+        base_url = row["schedule_url"].strip()
+        url = f"{base_url}&year={SEASON_YEAR}"
+        urls[row["school_name"]] = {
+            "url": url,
+            "school_id": str(row["school_id"])
+        }
+    return urls
  
+ 
+# ---------------------------------------------------------------------------
+# NAME RESOLUTION
+# ---------------------------------------------------------------------------
+ 
+def build_classname_lookup(team_to_class, schools_csv=SCHOOLS_CSV):
+    """
+    Build two lookups:
+      1. school_id → classification_name  (resolves opponent IDs on schedule pages)
+      2. csv_school_name → classification_name  (resolves the home school name)
+ 
+    Only exact matches after stripping ' High School' are used.
+    No fuzzy matching — fuzzy matching caused silent wrong mappings.
+    """
+    df = pd.read_csv(schools_csv)
+    known_class_names = set(team_to_class.keys())
+ 
+    # full CSV name → classification name
+    csv_to_classname = {}
+    for full_name in df["school_name"]:
+        stripped = full_name.replace(" High School", "").strip()
+        if stripped in known_class_names:
+            csv_to_classname[full_name] = stripped
+        elif full_name in known_class_names:
+            csv_to_classname[full_name] = full_name
+ 
+    # school_id → classification name
     id_to_classname = {}
-    unresolved = []
+    for _, row in df.iterrows():
+        full_name = row["school_name"]
+        sid = str(row["school_id"])
+        if full_name in csv_to_classname:
+            id_to_classname[sid] = csv_to_classname[full_name]
  
-    for cname in class_names:
-        if cname in stripped_to_id:
-            id_to_classname[stripped_to_id[cname]] = cname
-        else:
-            unresolved.append(cname)
- 
-    # Apply manual overrides — these take priority over everything
-    for sid, cname in MANUAL_ID_OVERRIDES.items():
-        id_to_classname[sid] = cname
-        if cname in unresolved:
-            unresolved.remove(cname)
- 
+    # Report unresolved
+    resolved_classnames = set(id_to_classname.values())
+    unresolved = sorted(known_class_names - resolved_classnames)
     if unresolved:
-        print(f"\n  WARNING: {len(unresolved)} classification names could not be "
-              f"resolved to a school ID.\n"
-              f"  Games for these schools will fall back to whatever name MSHSAA\n"
-              f"  currently displays, which may be incorrect (merged/renamed).\n"
-              f"  For each school below, find its MSHSAA ID and add it to\n"
-              f"  MANUAL_ID_OVERRIDES at the top of this file.\n"
-              f"  Unresolved: {sorted(unresolved)}\n")
+        print(f"\n  WARNING: {len(unresolved)} classification schools could not be "
+              f"mapped to a school ID.\n"
+              f"  These schools will still be scraped via their own schedule page\n"
+              f"  but opponent names may not resolve correctly for their games.\n"
+              f"  Unresolved: {unresolved}\n")
     else:
-        print(f"  [name-resolve] All classification schools resolved successfully.")
+        print("  [name-resolve] All classification schools resolved successfully.")
  
     print(f"  [name-resolve] {len(id_to_classname)} schools mapped by ID")
-    return id_to_classname
+    return id_to_classname, csv_to_classname
+ 
+ 
+def resolve_csv_name(csv_name, csv_to_classname, team_to_class):
+    """
+    Resolve a full CSV school name to its classifications.json name.
+    Returns None if not found.
+    """
+    if csv_name in csv_to_classname:
+        return csv_to_classname[csv_name]
+    if csv_name in team_to_class:
+        return csv_name
+    return None
  
  
 # ---------------------------------------------------------------------------
-# SCRAPING
+# SCHEDULE PAGE SCRAPING
 # ---------------------------------------------------------------------------
  
-def get_school_id_from_cell(cell):
-    """Extract the numeric s= ID from the team's schedule link href."""
-    a = cell.find("a", href=lambda h: h and "/MySchool/Schedule.aspx" in h)
-    if not a:
-        return None
-    match = re.search(r"[?&]s=(\d+)", a["href"], re.IGNORECASE)
-    return match.group(1) if match else None
+def parse_game_date(date_text):
+    """Parse a date string from the MSHSAA schedule page."""
+    date_text = date_text.strip()
+    for fmt in ("%m/%d/%Y", "%b %d, %Y", "%B %d, %Y", "%m/%d/%y"):
+        try:
+            return datetime.strptime(date_text, fmt).date()
+        except ValueError:
+            continue
+    return None
  
-def is_mshsaa_team(cell):
-    return cell.find("a", href=lambda h: h and "/MySchool/Schedule.aspx" in h) is not None
  
 def parse_score(text):
     text = text.strip()
@@ -130,79 +165,170 @@ def parse_score(text):
         return None
     return score if 0 <= score <= MAX_POINTS else None
  
-def is_forfeit(c1, c2):
-    return "forfeit" in (c1.get_text() + c2.get_text()).lower()
  
-def scrape_date(target_date, id_to_classname):
-    url = BASE_URL.format(target_date.strftime("%m%d%Y"))
+def get_school_id_from_link(tag):
+    """Extract the s= school ID from an anchor tag href."""
+    if not tag:
+        return None
+    href = tag.get("href", "")
+    match = re.search(r"[?&]s=(\d+)", href, re.IGNORECASE)
+    return match.group(1) if match else None
+ 
+ 
+def parse_date_from_cells(cells):
+    """Scan row cells for a recognizable date string."""
+    for cell in cells:
+        text = cell.get_text(strip=True)
+        if re.match(r'\d{1,2}/\d{1,2}/\d{2,4}', text):
+            return parse_game_date(text)
+        if re.match(r'[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4}', text):
+            return parse_game_date(text)
+    return None
+ 
+ 
+def parse_scores_from_cells(cells):
+    """
+    Extract home and opponent scores from a row.
+    MSHSAA schedule pages show scores as 'W 42-14' or 'L 7-28'.
+    Returns (home_score, opp_score) or (None, None).
+    """
+    for cell in cells:
+        text = cell.get_text(strip=True)
+        match = re.search(r'([WL])\s+(\d+)-(\d+)', text, re.IGNORECASE)
+        if match:
+            result = match.group(1).upper()
+            s1, s2 = int(match.group(2)), int(match.group(3))
+            home, opp = (s1, s2) if result == 'W' else (s2, s1)
+            if 0 <= home <= MAX_POINTS and 0 <= opp <= MAX_POINTS:
+                return home, opp
+    return None, None
+ 
+ 
+def parse_opponent_from_cells(cells, id_to_classname):
+    """
+    Find the opponent link in a row and resolve it to a classification name
+    via school ID. Falls back to display text if ID not found in map.
+    """
+    for cell in cells:
+        link = cell.find("a", href=lambda h: h and "/MySchool/Schedule.aspx" in h)
+        if link:
+            sid = get_school_id_from_link(link)
+            if sid and sid in id_to_classname:
+                return id_to_classname[sid]
+            return link.get_text(strip=True) or None
+    return None
+ 
+ 
+def scrape_schedule(home_classname, url, id_to_classname):
+    """
+    Scrape one school's schedule page and return completed games within
+    the season date range as tuples:
+        (date_str, home_classname, home_score, opp_classname, opp_score)
+ 
+    Because we scrape from the home school's own page, the home school
+    name is always the exact classification name — no ID resolution needed
+    for the home side. Only the opponent needs ID resolution.
+    """
     try:
-        resp = requests.get(url, timeout=20, headers={
-            "User-Agent": "Mozilla/5.0 (compatible; FootballRatingsBot/1.0)"
-        })
+        resp = requests.get(url, timeout=20, headers=HEADERS)
         resp.raise_for_status()
     except requests.RequestException as e:
-        print(f"  Failed {target_date}: {e}")
+        print(f"    Failed {home_classname}: {e}")
         return []
  
     soup  = BeautifulSoup(resp.text, "html.parser")
     games = []
  
-    print(f"  Page length: {len(resp.text)} chars")
-    print(f"  Tables found: {len(soup.find_all('table'))}")
- 
     for table in soup.find_all("table"):
         rows = table.find_all("tr")
-        if len(rows) < 3:
-            continue
-        if "final" not in rows[-1].get_text().lower():
-            continue
-        t1c = rows[1].find_all("td")
-        t2c = rows[2].find_all("td")
-        if len(t1c) < 3 or len(t2c) < 3:
-            continue
-        if not is_mshsaa_team(t1c[1]) or not is_mshsaa_team(t2c[1]):
-            continue
-        if is_forfeit(t1c[1], t2c[1]):
-            continue
+        for row in rows:
+            cells = row.find_all("td")
+            if len(cells) < 4:
+                continue
  
-        # Extract school IDs from the href (permanent, never changes)
-        id1 = get_school_id_from_cell(t1c[1])
-        id2 = get_school_id_from_cell(t2c[1])
-        if not id1 or not id2:
-            continue
+            # Date
+            game_date = parse_date_from_cells(cells)
+            if game_date is None:
+                continue
+            if not (SEASON_START <= game_date <= SEASON_END):
+                continue
  
-        s1 = parse_score(t1c[2].get_text())
-        s2 = parse_score(t2c[2].get_text())
-        if s1 is None or s2 is None:
-            continue
+            # Skip forfeits
+            row_text = " ".join(c.get_text() for c in cells).lower()
+            if "forfeit" in row_text:
+                continue
  
-        # Resolve IDs to 2010 classification names.
-        # Fall back to current display text only if the ID is not in our map
-        # (e.g. a non-MSHSAA school that showed up as an opponent).
-        l1 = t1c[1].find("a")
-        l2 = t2c[1].find("a")
-        name1 = id_to_classname.get(id1, l1.get_text().strip() if l1 else f"ID_{id1}")
-        name2 = id_to_classname.get(id2, l2.get_text().strip() if l2 else f"ID_{id2}")
+            # Scores
+            home_score, opp_score = parse_scores_from_cells(cells)
+            if home_score is None or opp_score is None:
+                continue
  
-        games.append((
-            target_date.strftime("%Y-%m-%d"),
-            name1, s1,
-            name2, s2
-        ))
+            # Opponent
+            opp_classname = parse_opponent_from_cells(cells, id_to_classname)
+            if opp_classname is None:
+                continue
+ 
+            games.append((
+                game_date.strftime("%Y-%m-%d"),
+                home_classname,
+                home_score,
+                opp_classname,
+                opp_score
+            ))
  
     return games
  
-def scrape_full_season(id_to_classname):
-    all_games = []
-    current   = SEASON_START
-    while current <= min(SEASON_END, date.today()):
-        print(f"  Scraping {current}...", end=" ", flush=True)
-        day_games = scrape_date(current, id_to_classname)
-        all_games.extend(day_games)
-        print(f"{len(day_games)} games")
-        current += timedelta(days=1)
+ 
+# ---------------------------------------------------------------------------
+# FULL SEASON SCRAPE
+# ---------------------------------------------------------------------------
+ 
+def scrape_full_season(team_to_class, id_to_classname,
+                       csv_to_classname, schedule_urls):
+    """
+    Scrape every classification school's schedule page.
+    Deduplicates games since each game appears on both teams' pages.
+    Only keeps games where both teams exist in classifications.json.
+    """
+    all_games  = []
+    seen_games = set()
+    known_teams = set(team_to_class.keys())
+ 
+    for csv_name, info in schedule_urls.items():
+        classname = resolve_csv_name(csv_name, csv_to_classname, team_to_class)
+        if classname is None:
+            # Not in classifications.json — skip
+            continue
+ 
+        print(f"  Scraping {classname}...", end=" ", flush=True)
+        games = scrape_schedule(classname, info["url"], id_to_classname)
+ 
+        new_count = 0
+        for game in games:
+            date_str, home, h_score, away, a_score = game
+ 
+            # Only keep games where both teams are in classifications
+            if away not in known_teams:
+                continue
+ 
+            # Deduplicate — same game appears on both schools' pages
+            key = frozenset([date_str, home, away])
+            if key in seen_games:
+                continue
+            seen_games.add(key)
+ 
+            all_games.append(game)
+            new_count += 1
+ 
+        print(f"{new_count} new games ({len(games)} on schedule page)")
         time.sleep(0.5)
+ 
     return all_games
+ 
+ 
+# ---------------------------------------------------------------------------
+# CSV OUTPUT
+# ---------------------------------------------------------------------------
  
 def save_csv(all_games):
     with open(CSV_PATH, "w", newline="") as f:
@@ -212,20 +338,6 @@ def save_csv(all_games):
             writer.writerow([date_str, t1, s1, t2, s2])
     print(f"Saved {len(all_games)} games to {CSV_PATH}")
  
-# ---------------------------------------------------------------------------
-# CLASSIFICATION LOOKUP
-# ---------------------------------------------------------------------------
- 
-def load_classifications(path=CLASSIFICATIONS_PATH):
-    with open(path) as f:
-        data = json.load(f)
-    team_to_class    = {}
-    team_to_district = {}
-    for entry in data["teams"]:
-        school = entry["school"]
-        team_to_class[school]    = entry["classification"]
-        team_to_district[school] = entry["district"]
-    return team_to_class, team_to_district
  
 # ---------------------------------------------------------------------------
 # RATING ENGINE
@@ -238,14 +350,13 @@ def run_iterations(games, teams, off_rating, def_rating, league_avg,
         def_error    = {t: 0.0 for t in teams}
         games_played = {t: 0   for t in teams}
  
+        eligible_games = games
         if ovr_filter is not None:
             eligible_games = [
                 (t1, t2, s1, s2) for t1, t2, s1, s2 in games
                 if abs((off_rating[t1] + def_rating[t1]) -
-                        (off_rating[t2] + def_rating[t2])) <= ovr_filter
+                       (off_rating[t2] + def_rating[t2])) <= ovr_filter
             ]
-        else:
-            eligible_games = games
  
         for t1, t2, actual_s1, actual_s2 in eligible_games:
             predicted_s1 = off_rating[t1] - def_rating[t2] + league_avg
@@ -254,23 +365,31 @@ def run_iterations(games, teams, off_rating, def_rating, league_avg,
             error_s1 = actual_s1 - predicted_s1
             error_s2 = actual_s2 - predicted_s2
  
-            off_error[t1]    += error_s1
-            off_error[t2]    += error_s2
-            def_error[t1]    += -error_s2
-            def_error[t2]    += -error_s1
+            off_error[t1] += error_s1
+            off_error[t2] += error_s2
+            def_error[t1] += -error_s2
+            def_error[t2] += -error_s1
  
             games_played[t1] += 1
             games_played[t2] += 1
  
         for team in teams:
             if games_played[team] > 0:
-                off_rating[team] += (off_error[team] / games_played[team]) * LEARNING_RATE
-                def_rating[team] += (def_error[team] / games_played[team]) * LEARNING_RATE
+                off_rating[team] += (
+                    (off_error[team] / games_played[team]) * LEARNING_RATE
+                )
+                def_rating[team] += (
+                    (def_error[team] / games_played[team]) * LEARNING_RATE
+                )
  
         if (iteration + 1) % 100 == 0:
-            eligible_count = len(eligible_games) if ovr_filter is not None else len(games)
-            print(f"  [{phase_label}] Iteration {iteration + 1}/{iterations} complete"
-                  + (f" | Competitive games this iteration: {eligible_count}" if ovr_filter else ""))
+            eligible_count = (
+                len(eligible_games) if ovr_filter is not None else len(games)
+            )
+            print(
+                f"  [{phase_label}] Iteration {iteration + 1}/{iterations} complete"
+                + (f" | Competitive games: {eligible_count}" if ovr_filter else "")
+            )
  
  
 def calculate_ratings(all_games, iterations=ITERATIONS):
@@ -292,18 +411,17 @@ def calculate_ratings(all_games, iterations=ITERATIONS):
                    iterations=iterations, phase_label="Phase 1", ovr_filter=None)
  
     print(f"\n  Running Phase 2 ({iterations} iterations, "
-          f"competitive games within {COMPETITIVE_THRESHOLD} OVR pts, dynamic filter)...")
+          f"competitive games within {COMPETITIVE_THRESHOLD} OVR pts)...")
     run_iterations(games, teams, off_rating, def_rating, league_avg,
                    iterations=iterations, phase_label="Phase 2",
                    ovr_filter=COMPETITIVE_THRESHOLD)
  
     ovr_rating = {t: round(off_rating[t] + def_rating[t], 2) for t in teams}
- 
     return off_rating, def_rating, ovr_rating, league_avg
  
  
 # ---------------------------------------------------------------------------
-# OUTPUT
+# JSON OUTPUT
 # ---------------------------------------------------------------------------
  
 def build_team_entries(off_rating, def_rating, ovr_rating,
@@ -311,22 +429,22 @@ def build_team_entries(off_rating, def_rating, ovr_rating,
                        class_filter=None):
     all_teams = list(ovr_rating.keys())
  
-    if class_filter is not None:
-        pool = [t for t in all_teams if team_to_class.get(t) == class_filter]
-    else:
-        pool = all_teams
+    pool = (
+        [t for t in all_teams if team_to_class.get(t) == class_filter]
+        if class_filter is not None
+        else all_teams
+    )
  
-    ovr_sorted = sorted(pool, key=lambda t: ovr_rating[t], reverse=True)
-    off_sorted = sorted(pool, key=lambda t: off_rating[t], reverse=True)
-    def_sorted = sorted(pool, key=lambda t: def_rating[t], reverse=True)
+    ovr_sorted = sorted(pool, key=lambda t: ovr_rating[t],  reverse=True)
+    off_sorted = sorted(pool, key=lambda t: off_rating[t],  reverse=True)
+    def_sorted = sorted(pool, key=lambda t: def_rating[t],  reverse=True)
  
     ovr_rank = {t: i + 1 for i, t in enumerate(ovr_sorted)}
     off_rank = {t: i + 1 for i, t in enumerate(off_sorted)}
     def_rank = {t: i + 1 for i, t in enumerate(def_sorted)}
  
-    entries = []
-    for t in ovr_sorted:
-        entries.append({
+    return [
+        {
             "ovr_rank":       ovr_rank[t],
             "school":         t,
             "classification": team_to_class.get(t),
@@ -336,16 +454,15 @@ def build_team_entries(off_rating, def_rating, ovr_rating,
             "off_rank":       off_rank[t],
             "def_rating":     round(def_rating[t], 2),
             "def_rank":       def_rank[t],
-        })
- 
-    return entries
+        }
+        for t in ovr_sorted
+    ]
  
  
 def save_overall_json(off_rating, def_rating, ovr_rating, league_avg,
                       team_to_class, team_to_district):
     entries = build_team_entries(off_rating, def_rating, ovr_rating,
-                                 team_to_class, team_to_district,
-                                 class_filter=None)
+                                 team_to_class, team_to_district)
     output = {
         "last_updated":   datetime.now().strftime("%B %d, %Y at %I:%M %p"),
         "league_average": round(league_avg, 2),
@@ -355,7 +472,7 @@ def save_overall_json(off_rating, def_rating, ovr_rating, league_avg,
         json.dump(output, f, indent=2)
  
     print(f"Saved {len(entries)} teams to {OUTPUT_PATH}")
-    print(f"Top 5 overall:")
+    print("Top 5 overall:")
     for e in entries[:5]:
         print(f"  {e['ovr_rank']}. {e['school']} (Class {e['classification']}) "
               f"| OVR: {e['ovr_rating']:+.2f} "
@@ -384,7 +501,7 @@ def save_class_jsons(off_rating, def_rating, ovr_rating, league_avg,
             json.dump(output, f, indent=2)
  
         print(f"  Class {cls}: {len(entries)} teams → {path}")
-        print(f"    Top 3: " + " | ".join(
+        print("    Top 3: " + " | ".join(
             f"{e['ovr_rank']}. {e['school']} ({e['ovr_rating']:+.2f})"
             for e in entries[:3]
         ))
@@ -397,12 +514,24 @@ def save_class_jsons(off_rating, def_rating, ovr_rating, league_avg,
 if __name__ == "__main__":
     print("=== MSHSAA Football Ratings 2010 ===")
  
-    print("\nBuilding school ID → name lookup...")
-    id_to_classname = build_id_to_classname()
+    print("\nLoading classifications...")
+    team_to_class, team_to_district = load_classifications()
+    print(f"  Loaded {len(team_to_class)} teams from {CLASSIFICATIONS_PATH}")
  
-    print("\nScraping season...")
-    all_games = scrape_full_season(id_to_classname)
-    print(f"\nTotal valid games: {len(all_games)}")
+    print("\nBuilding school ID → classification name lookup...")
+    id_to_classname, csv_to_classname = build_classname_lookup(
+        team_to_class, SCHOOLS_CSV
+    )
+ 
+    print("\nLoading football schedule URLs...")
+    schedule_urls = load_football_schedule_urls()
+    print(f"  Loaded {len(schedule_urls)} football schedule URLs")
+ 
+    print("\nScraping individual school schedules...")
+    all_games = scrape_full_season(
+        team_to_class, id_to_classname, csv_to_classname, schedule_urls
+    )
+    print(f"\nTotal unique valid games: {len(all_games)}")
     if not all_games:
         print("No games found — exiting.")
         exit(1)
@@ -410,11 +539,8 @@ if __name__ == "__main__":
     print("\nSaving scoreboard CSV...")
     save_csv(all_games)
  
-    print("\nLoading classifications...")
-    team_to_class, team_to_district = load_classifications()
-    print(f"  Loaded {len(team_to_class)} teams from {CLASSIFICATIONS_PATH}")
- 
-    print(f"\nRunning ratings engine ({ITERATIONS} Phase 1 + {ITERATIONS} Phase 2 iterations)...")
+    print(f"\nRunning ratings engine "
+          f"({ITERATIONS} Phase 1 + {ITERATIONS} Phase 2 iterations)...")
     off_rating, def_rating, ovr_rating, league_avg = calculate_ratings(all_games)
  
     print("\nSaving overall ratings JSON...")
@@ -426,4 +552,3 @@ if __name__ == "__main__":
                      team_to_class, team_to_district)
  
     print("\n=== Done ===")
- 
