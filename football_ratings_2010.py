@@ -11,6 +11,7 @@ BASE_URL      = "https://www.mshsaa.org/activities/scoreboard.aspx?alg=19&date={
 MAX_POINTS      = 100
 OUTPUT_PATH   = "football_ratings_2010.json"
 CSV_PATH      = "football_scoreboard_2010.csv"
+CLASSIFICATIONS_PATH = "classifications.json"
 ITERATIONS    = 1000
 LEARNING_RATE = 0.1
 COMPETITIVE_THRESHOLD = 35  # Max OVR gap for Phase 2 iterations
@@ -102,6 +103,26 @@ def save_csv(all_games):
             writer.writerow([date_str, t1, s1, t2, s2])
     print(f"Saved {len(all_games)} games to {CSV_PATH}")
  
+# --- CLASSIFICATION LOOKUP ---
+ 
+def load_classifications(path=CLASSIFICATIONS_PATH):
+    """
+    Returns two dicts built from classifications.json:
+      team_to_class   : { "Cabool": 1, "Hayti": 1, ... }
+      team_to_district: { "Cabool": 1, "Hayti": 1, ... }
+    """
+    with open(path) as f:
+        data = json.load(f)
+ 
+    team_to_class    = {}
+    team_to_district = {}
+    for entry in data["teams"]:
+        school = entry["school"]
+        team_to_class[school]    = entry["classification"]
+        team_to_district[school] = entry["district"]
+ 
+    return team_to_class, team_to_district
+ 
 # --- RATING ENGINE ---
  
 def run_iterations(games, teams, off_rating, def_rating, league_avg,
@@ -192,38 +213,96 @@ def calculate_ratings(all_games, iterations=ITERATIONS):
     return off_rating, def_rating, ovr_rating, league_avg
  
  
-def save_json(off_rating, def_rating, ovr_rating, league_avg):
+def build_output(off_rating, def_rating, ovr_rating, league_avg,
+                 team_to_class=None, team_to_district=None):
+    """
+    Build the ratings output dict. Optionally includes classification
+    and district fields if lookup dicts are provided.
+    """
     teams      = sorted(ovr_rating, key=lambda t: ovr_rating[t], reverse=True)
     off_ranked = sorted(teams, key=lambda t: off_rating[t], reverse=True)
     def_ranked = sorted(teams, key=lambda t: def_rating[t], reverse=True)
     off_rank   = {t: i+1 for i, t in enumerate(off_ranked)}
     def_rank   = {t: i+1 for i, t in enumerate(def_ranked)}
  
-    output = {
-        "last_updated":   datetime.now().strftime("%B %d, %Y at %I:%M %p"),
-        "league_average": round(league_avg, 2),
-        "teams": [{
+    team_entries = []
+    for i, t in enumerate(teams):
+        entry = {
             "ovr_rank":   i + 1,
             "school":     t,
             "ovr_rating": ovr_rating[t],
             "off_rating": round(off_rating[t], 2),
             "off_rank":   off_rank[t],
             "def_rating": round(def_rating[t], 2),
-            "def_rank":   def_rank[t]
-        } for i, t in enumerate(teams)]
+            "def_rank":   def_rank[t],
+        }
+        if team_to_class is not None:
+            entry["classification"] = team_to_class.get(t)
+        if team_to_district is not None:
+            entry["district"] = team_to_district.get(t)
+        team_entries.append(entry)
+ 
+    return {
+        "last_updated":   datetime.now().strftime("%B %d, %Y at %I:%M %p"),
+        "league_average": round(league_avg, 2),
+        "teams": team_entries,
     }
  
-    with open(OUTPUT_PATH, "w") as f:
+ 
+def save_json(off_rating, def_rating, ovr_rating, league_avg,
+              path=OUTPUT_PATH, team_to_class=None, team_to_district=None):
+    output = build_output(off_rating, def_rating, ovr_rating, league_avg,
+                          team_to_class, team_to_district)
+ 
+    with open(path, "w") as f:
         json.dump(output, f, indent=2)
  
-    print(f"Saved {len(teams)} teams to {OUTPUT_PATH}")
+    teams = output["teams"]
+    print(f"Saved {len(teams)} teams to {path}")
     print(f"League average: {league_avg:.2f} points/game")
     print(f"Top 5 teams:")
-    for entry in output["teams"][:5]:
+    for entry in teams[:5]:
         print(f"  {entry['ovr_rank']}. {entry['school']} "
               f"| OVR: {entry['ovr_rating']:+.2f} "
               f"| OFF: {entry['off_rating']:+.2f} "
               f"| DEF: {entry['def_rating']:+.2f}")
+ 
+ 
+def calculate_and_save_class_ratings(all_games, team_to_class, team_to_district):
+    """
+    For each classification (1-6), filter games to only those where BOTH
+    teams are in the same class, run the full rating engine, and save a
+    separate JSON file: football_ratings_2010_class{N}.json
+    """
+    # Group games by class (only intra-class games count)
+    class_games = {c: [] for c in range(1, 7)}
+    for date_str, t1, s1, t2, s2 in all_games:
+        c1 = team_to_class.get(t1)
+        c2 = team_to_class.get(t2)
+        if c1 is not None and c2 is not None and c1 == c2:
+            class_games[c1].append((date_str, t1, s1, t2, s2))
+ 
+    for cls in range(1, 7):
+        games = class_games[cls]
+        print(f"\n{'='*50}")
+        print(f"=== CLASS {cls} RATINGS ({len(games)} intra-class games) ===")
+        print(f"{'='*50}")
+ 
+        if not games:
+            print(f"  No intra-class games found for Class {cls} — skipping.")
+            continue
+ 
+        off_rating, def_rating, ovr_rating, league_avg = calculate_ratings(games)
+ 
+        if not ovr_rating:
+            print(f"  No ratings produced for Class {cls} — skipping.")
+            continue
+ 
+        out_path = f"football_ratings_2010_class{cls}.json"
+        save_json(off_rating, def_rating, ovr_rating, league_avg,
+                  path=out_path,
+                  team_to_class=team_to_class,
+                  team_to_district=team_to_district)
  
  
 if __name__ == "__main__":
@@ -237,9 +316,26 @@ if __name__ == "__main__":
     print("\nSaving scoreboard CSV...")
     save_csv(all_games)
  
+    # Load classifications for class/district lookup
+    print("\nLoading classifications...")
+    team_to_class, team_to_district = load_classifications()
+    print(f"  Loaded {len(team_to_class)} teams from {CLASSIFICATIONS_PATH}")
+ 
+    # --- Overall ratings (all 338 teams, all games) ---
+    print(f"\n{'='*50}")
+    print(f"=== OVERALL RATINGS (all classes) ===")
+    print(f"{'='*50}")
     print(f"\nRunning {ITERATIONS} Phase 1 + {ITERATIONS} Phase 2 iterations...")
     off_rating, def_rating, ovr_rating, league_avg = calculate_ratings(all_games)
  
-    print("\nSaving ratings JSON...")
-    save_json(off_rating, def_rating, ovr_rating, league_avg)
+    print("\nSaving overall ratings JSON...")
+    save_json(off_rating, def_rating, ovr_rating, league_avg,
+              path=OUTPUT_PATH,
+              team_to_class=team_to_class,
+              team_to_district=team_to_district)
+ 
+    # --- Per-class ratings (intra-class games only) ---
+    print("\nCalculating per-class ratings...")
+    calculate_and_save_class_ratings(all_games, team_to_class, team_to_district)
+ 
     print("\n=== Done ===")
