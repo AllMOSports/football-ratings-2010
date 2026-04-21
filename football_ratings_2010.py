@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import json
 import csv
 import re
-import pandas as pd
+import pandas
 from datetime import datetime, date, timedelta
 from difflib import get_close_matches
 import time
