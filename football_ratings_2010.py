@@ -5,7 +5,6 @@ import csv
 import re
 import pandas as pd
 from datetime import datetime, date, timedelta
-from difflib import get_close_matches
 import time
  
 SEASON_START  = date(2010, 8, 1)
@@ -29,34 +28,44 @@ COMPETITIVE_THRESHOLD = 35
 # the href and map it to the correct 2010 name stored in classifications.json,
 # completely bypassing the (now-wrong) display text on the page.
 #
-# Name resolution strategy (applied in order):
+# Name resolution strategy:
 #   1. Strip " High School" suffix from mshsaa_schools.csv names and compare
-#      directly to classifications.json names  — covers ~270 schools.
-#   2. Fuzzy match (difflib) against full CSV names for abbreviations /
-#      co-op names that differ slightly  — covers most of the remainder.
-#   3. Any classification name still unresolved at startup is flagged so you
-#      know to add a manual entry to MANUAL_ID_OVERRIDES below.
+#      directly to classifications.json names — covers ~270 schools exactly.
+#   2. Any classification name that does not exact-match is flagged at startup.
+#      Add those schools to MANUAL_ID_OVERRIDES below using their MSHSAA ID.
+#      NO fuzzy matching is used — fuzzy matching caused silent wrong mappings
+#      (e.g. "Scott City" was matched to "Seneca") which corrupted ratings.
+#
+# To find a school's MSHSAA ID:
+#   - Open football_scoreboard_2010.csv after a run
+#   - Find a game row for that school
+#   - Go to that date's MSHSAA scoreboard page in your browser
+#   - Hover over the team link — the URL will contain s=XXXX
+#   - Add "XXXX": "School Name" to MANUAL_ID_OVERRIDES below
  
-# Add entries here only for schools that cannot be auto-resolved.
-# Format:  mshsaa_school_id (string) : classification_name (string)
-# Example: "432": "Scott City"
 MANUAL_ID_OVERRIDES = {
-    # --- fill these in based on the WARNING output at startup ---
-    # "432": "Scott City",
+    # --- add entries here based on the UNRESOLVED warning at startup ---
+    # Format: "mshsaa_id": "exact name as it appears in classifications.json"
+    # Example: "432": "Scott City",
 }
  
 def build_id_to_classname(schools_csv=SCHOOLS_CSV,
                            classifications_path=CLASSIFICATIONS_PATH):
     """
-    Return a dict  { school_id_str : classification_name }
-    covering every team in classifications.json.
+    Return a dict { school_id_str : classification_name } covering every
+    team in classifications.json that can be resolved to an MSHSAA school ID.
+ 
+    Only exact matches (after stripping ' High School') are used.
+    Fuzzy matching is intentionally excluded — it caused silent wrong mappings.
+    Unresolved schools are printed as warnings and must be added to
+    MANUAL_ID_OVERRIDES above.
     """
     schools_df = pd.read_csv(schools_csv)
-    school_full_names = schools_df["school_name"].tolist()
-    id_by_full  = dict(zip(schools_df["school_name"],
-                           schools_df["school_id"].astype(str)))
+    id_by_full = dict(zip(schools_df["school_name"],
+                          schools_df["school_id"].astype(str)))
  
-    # stripped name → id  (e.g. "Chaffee High School" → "Chaffee" → "257")
+    # Build stripped name → id lookup
+    # e.g. "Chaffee High School" → stripped "Chaffee" → id "257"
     stripped_to_id = {}
     for full, sid in id_by_full.items():
         stripped = full.replace(" High School", "").strip()
@@ -70,22 +79,12 @@ def build_id_to_classname(schools_csv=SCHOOLS_CSV,
     unresolved = []
  
     for cname in class_names:
-        # Pass 1: exact match after stripping suffix
         if cname in stripped_to_id:
             id_to_classname[stripped_to_id[cname]] = cname
-            continue
+        else:
+            unresolved.append(cname)
  
-        # Pass 2: fuzzy match against full names
-        matches = get_close_matches(cname, school_full_names, n=1, cutoff=0.6)
-        if matches:
-            sid = id_by_full[matches[0]]
-            id_to_classname[sid] = cname
-            print(f"  [name-resolve] fuzzy '{cname}' → '{matches[0]}' (id={sid})")
-            continue
- 
-        unresolved.append(cname)
- 
-    # Pass 3: apply manual overrides
+    # Apply manual overrides — these take priority over everything
     for sid, cname in MANUAL_ID_OVERRIDES.items():
         id_to_classname[sid] = cname
         if cname in unresolved:
@@ -93,13 +92,14 @@ def build_id_to_classname(schools_csv=SCHOOLS_CSV,
  
     if unresolved:
         print(f"\n  WARNING: {len(unresolved)} classification names could not be "
-              f"auto-resolved to a school ID.\n"
-              f"  Games involving these schools will still be scraped and rated,\n"
-              f"  but they will appear under whatever name MSHSAA currently shows\n"
-              f"  (which may be a merged/renamed name).\n"
-              f"  To fix, look up each school's MSHSAA ID and add it to\n"
+              f"resolved to a school ID.\n"
+              f"  Games for these schools will fall back to whatever name MSHSAA\n"
+              f"  currently displays, which may be incorrect (merged/renamed).\n"
+              f"  For each school below, find its MSHSAA ID and add it to\n"
               f"  MANUAL_ID_OVERRIDES at the top of this file.\n"
               f"  Unresolved: {sorted(unresolved)}\n")
+    else:
+        print(f"  [name-resolve] All classification schools resolved successfully.")
  
     print(f"  [name-resolve] {len(id_to_classname)} schools mapped by ID")
     return id_to_classname
@@ -426,3 +426,4 @@ if __name__ == "__main__":
                      team_to_class, team_to_district)
  
     print("\n=== Done ===")
+ 
