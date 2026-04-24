@@ -35,31 +35,7 @@ HEADERS = {
 }
  
 # ---------------------------------------------------------------------------
-# NAME RESOLUTION
-# ---------------------------------------------------------------------------
-#
-# Every MSHSAA team link contains a permanent numeric school ID in its href:
-#   e.g. /MySchool/Schedule.aspx?s=257
-# This ID never changes even when MSHSAA renames or merges a school.
-#
-# Resolution order for each scraped team:
-#   1. Extract the s= ID from the href
-#   2. Look the ID up in id_to_classname (built by exact-matching
-#      mshsaa_schools.csv names against classifications.json)
-#      → If found, use the classification name. Done.
-#   3. If the ID is not in the map, check whether the raw display text
-#      from the page exactly matches a name in classifications.json
-#      → If found, use it. Done.
-#   4. If neither resolves, return None — the game will be skipped.
-#
-# This handles "Scott City with Chaffee" correctly:
-#   - MSHSAA shows "Scott City with Chaffee" as display text today
-#   - But the href still has Scott City's original s= ID
-#   - That ID maps to "Scott City" in our lookup
-#   - Game is correctly attributed to Scott City with no manual work
-#
-# No fuzzy matching is used anywhere. Fuzzy matching caused silent wrong
-# attributions (e.g. "Scott City" silently mapped to "Seneca").
+# CLASSIFICATIONS
 # ---------------------------------------------------------------------------
  
 def load_classifications(path=CLASSIFICATIONS_PATH):
@@ -75,15 +51,15 @@ def load_classifications(path=CLASSIFICATIONS_PATH):
     return team_to_class, team_to_district
  
  
+# ---------------------------------------------------------------------------
+# NAME RESOLUTION
+# ---------------------------------------------------------------------------
+ 
 def build_id_to_classname(team_to_class, schools_csv=SCHOOLS_CSV):
     """
     Build { school_id_str : classification_name } by exact-matching
     mshsaa_schools.csv names to classifications.json names after stripping
-    the ' High School' suffix.
- 
-    Schools that don't exact-match are printed as a note. They will still
-    be resolved at scrape time if their display text exactly matches a
-    classifications.json name (step 3 above).
+    the ' High School' suffix. No fuzzy matching used.
     """
     df = pd.read_csv(schools_csv)
     known_class_names = set(team_to_class.keys())
@@ -99,19 +75,6 @@ def build_id_to_classname(team_to_class, schools_csv=SCHOOLS_CSV):
         elif full_name in known_class_names:
             id_to_classname[sid] = full_name
  
-    resolved   = set(id_to_classname.values())
-    unresolved = sorted(known_class_names - resolved)
- 
-    if unresolved:
-        print(f"\n  NOTE: {len(unresolved)} classification schools were not matched "
-              f"to a school ID via exact name.\n"
-              f"  These will resolve at scrape time if their display text on the\n"
-              f"  MSHSAA page exactly matches their classifications.json name.\n"
-              f"  If a school still can't be resolved, its games will be skipped.\n"
-              f"  Unmatched: {unresolved}\n")
-    else:
-        print("  [name-resolve] All classification schools resolved by ID.")
- 
     print(f"  [name-resolve] {len(id_to_classname)} schools mapped by ID")
     return id_to_classname
  
@@ -121,8 +84,11 @@ def resolve_name(cell, id_to_classname, known_teams):
     Resolve a scoreboard table cell to a classification name.
  
     Step 1: Extract s= ID from href → look up in id_to_classname.
+            Handles renamed/merged schools (e.g. 'Scott City with Chaffee'
+            → 'Scott City') because the ID in the href never changes.
     Step 2: Exact match of display text against known_teams.
-    Returns None if unresolvable.
+            Handles co-op names that exist in classifications as-is.
+    Returns None if unresolvable — game will be skipped.
     """
     a = cell.find("a", href=lambda h: h and "/MySchool/Schedule.aspx" in h)
     if not a:
@@ -197,11 +163,9 @@ def scrape_date(target_date, id_to_classname, known_teams):
         if is_forfeit(t1c[1], t2c[1]):
             continue
  
-        # Resolve both team names — ID lookup first, display text fallback
         name1 = resolve_name(t1c[1], id_to_classname, known_teams)
         name2 = resolve_name(t2c[1], id_to_classname, known_teams)
  
-        # Skip if either team cannot be resolved to a classification name
         if name1 is None or name2 is None:
             continue
  
@@ -230,6 +194,34 @@ def scrape_full_season(id_to_classname, known_teams):
         current += timedelta(days=1)
         time.sleep(0.5)
     return all_games
+ 
+ 
+def report_missing_teams(all_games, team_to_class):
+    """
+    After scraping is complete, compare every team in classifications.json
+    against the teams that actually appeared in scraped games.
+    Print only the teams that have zero games — these are the ones that
+    genuinely need attention (either their ID needs adding or their
+    classifications.json name needs correcting).
+    """
+    teams_with_games = set()
+    for _, t1, _, t2, _ in all_games:
+        teams_with_games.add(t1)
+        teams_with_games.add(t2)
+ 
+    missing = sorted(
+        t for t in team_to_class if t not in teams_with_games
+    )
+ 
+    if missing:
+        print(f"\n  MISSING TEAMS: {len(missing)} classification schools have "
+              f"no games in the scraped data.")
+        print(f"  These teams need attention — either their MSHSAA page shows")
+        print(f"  a different name than classifications.json, or they did not")
+        print(f"  play any games this season.")
+        print(f"  Missing: {missing}\n")
+    else:
+        print("\n  All classification schools have at least one game. \n")
  
  
 # ---------------------------------------------------------------------------
@@ -435,7 +427,10 @@ if __name__ == "__main__":
         print("No games found — exiting.")
         exit(1)
  
-    print("\nSaving scoreboard CSV...")
+    print("\nChecking for missing teams...")
+    report_missing_teams(all_games, team_to_class)
+ 
+    print("Saving scoreboard CSV...")
     save_csv(all_games)
  
     print(f"\nRunning ratings engine "
@@ -451,4 +446,3 @@ if __name__ == "__main__":
                      team_to_class, team_to_district)
  
     print("\n=== Done ===")
- 
