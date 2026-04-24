@@ -196,6 +196,46 @@ def scrape_full_season(id_to_classname, known_teams):
     return all_games
  
  
+def deduplicate_games(all_games):
+    """
+    Remove duplicate games where the same two teams played on the same date
+    with the same scores, regardless of which team is listed as home or away.
+ 
+    A game is considered a duplicate if another game exists with:
+      - The same date
+      - The same two team names (in either order)
+      - The same two scores (in either order)
+ 
+    The key is built from a frozenset of (team, score) pairs so that
+    (Date, Team A, 54, Team B, 13) and (Date, Team B, 13, Team A, 54)
+    produce the same key and only one is kept.
+    """
+    seen         = set()
+    unique_games = []
+    duplicates   = 0
+ 
+    for game in all_games:
+        date_str, t1, s1, t2, s2 = game
+        # Key is date + frozenset of team names only — order independent.
+        # Scores are intentionally excluded so that (Team A home, Team B away)
+        # and (Team B home, Team A away) on the same date are always treated
+        # as the same game regardless of which score appears first.
+        key = (date_str, frozenset([t1, t2]))
+        if key in seen:
+            duplicates += 1
+            continue
+        seen.add(key)
+        unique_games.append(game)
+ 
+    if duplicates:
+        print(f"  Removed {duplicates} duplicate game(s). "
+              f"{len(unique_games)} unique games remain.")
+    else:
+        print(f"  No duplicates found. {len(unique_games)} games.")
+ 
+    return unique_games
+ 
+ 
 def report_missing_teams(all_games, team_to_class):
     """
     After scraping is complete, compare every team in classifications.json
@@ -422,10 +462,13 @@ if __name__ == "__main__":
  
     print("\nScraping season scoreboard...")
     all_games = scrape_full_season(id_to_classname, known_teams)
-    print(f"\nTotal valid games: {len(all_games)}")
+    print(f"\nTotal valid games (before deduplication): {len(all_games)}")
     if not all_games:
         print("No games found — exiting.")
         exit(1)
+ 
+    print("\nDeduplicating games...")
+    all_games = deduplicate_games(all_games)
  
     print("\nChecking for missing teams...")
     report_missing_teams(all_games, team_to_class)
