@@ -60,7 +60,35 @@ def build_id_to_classname(team_to_class, schools_csv=SCHOOLS_CSV):
     Build { school_id_str : classification_name } by exact-matching
     mshsaa_schools.csv names to classifications.json names after stripping
     the ' High School' suffix. No fuzzy matching used.
+ 
+    MANUAL_OVERRIDES covers the 21 schools whose mshsaa_schools.csv name
+    does not match their classifications.json name. IDs were looked up
+    directly from the MSHSAA scoreboard pages.
     """
+    MANUAL_OVERRIDES = {
+        "271": "Clopton with Elsberry",
+        "272": "Cole Camp with Green Ridge",
+        "331": "King City with Pattonsburg",
+        "126": "Lockwood with Golden City",
+        "568": "McAuley Catholic with New Heights Christian",
+        "421": "Princeton with Mercer",
+        "424": "Rich Hill with Hume",
+        "431": "Salisbury",
+        "435": "Scott City",
+        "443": "Skyline",
+        "194": "Smith-Cotton",
+        "197": "South Callaway",
+        "549": "St. Mary's South Side",
+        "463": "Stockton",
+        "207": "Sullivan",
+        "208": "Sumner",
+        "469": "Sweet Springs with Malta Bend",
+        "198": "Truman",
+        "479": "University Academy Charter",
+        "204": "Van Horn",
+        "206": "Vashon",
+    }
+ 
     df = pd.read_csv(schools_csv)
     known_class_names = set(team_to_class.keys())
  
@@ -75,7 +103,11 @@ def build_id_to_classname(team_to_class, schools_csv=SCHOOLS_CSV):
         elif full_name in known_class_names:
             id_to_classname[sid] = full_name
  
-    print(f"  [name-resolve] {len(id_to_classname)} schools mapped by ID")
+    # Apply manual overrides last so they always take priority
+    id_to_classname.update(MANUAL_OVERRIDES)
+ 
+    print(f"  [name-resolve] {len(id_to_classname)} schools mapped by ID "
+          f"({len(MANUAL_OVERRIDES)} via manual overrides)")
     return id_to_classname
  
  
