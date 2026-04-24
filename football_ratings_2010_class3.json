@@ -1,5 +1,5 @@
 {
-  "last_updated": "April 24, 2026 at 08:20 PM",
+  "last_updated": "April 24, 2026 at 08:57 PM",
   "league_average": 24.69,
   "classification": 3,
   "teams": [
@@ -412,17 +412,6 @@
     },
     {
       "ovr_rank": 38,
-      "school": "Salem",
-      "classification": 3,
-      "district": 7,
-      "ovr_rating": -16.75,
-      "off_rating": -9.4,
-      "off_rank": 38,
-      "def_rating": -7.35,
-      "def_rank": 33
-    },
-    {
-      "ovr_rank": 39,
       "school": "Aurora",
       "classification": 3,
       "district": 10,
@@ -431,6 +420,17 @@
       "off_rank": 47,
       "def_rating": -3.07,
       "def_rank": 25
+    },
+    {
+      "ovr_rank": 39,
+      "school": "Salem",
+      "classification": 3,
+      "district": 7,
+      "ovr_rating": -16.75,
+      "off_rating": -9.4,
+      "off_rank": 38,
+      "def_rating": -7.35,
+      "def_rank": 33
     },
     {
       "ovr_rank": 40,

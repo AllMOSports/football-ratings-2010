@@ -1,5 +1,5 @@
 {
-  "last_updated": "April 24, 2026 at 08:20 PM",
+  "last_updated": "April 24, 2026 at 08:57 PM",
   "league_average": 24.69,
   "classification": 5,
   "teams": [
@@ -401,17 +401,6 @@
     },
     {
       "ovr_rank": 37,
-      "school": "Washington",
-      "classification": 5,
-      "district": 5,
-      "ovr_rating": 2.42,
-      "off_rating": 1.78,
-      "off_rank": 38,
-      "def_rating": 0.64,
-      "def_rank": 34
-    },
-    {
-      "ovr_rank": 38,
       "school": "Glendale",
       "classification": 5,
       "district": 7,
@@ -420,6 +409,17 @@
       "off_rank": 43,
       "def_rating": 5.72,
       "def_rank": 22
+    },
+    {
+      "ovr_rank": 38,
+      "school": "Washington",
+      "classification": 5,
+      "district": 5,
+      "ovr_rating": 2.42,
+      "off_rating": 1.78,
+      "off_rank": 38,
+      "def_rating": 0.64,
+      "def_rank": 34
     },
     {
       "ovr_rank": 39,
