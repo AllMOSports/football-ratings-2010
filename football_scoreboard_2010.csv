@@ -24,7 +24,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-08-27,Ft. Zumwalt West,36,Christian Brothers College,34
 2010-08-27,Putnam County,18,Clark County,57
 2010-08-27,Lutheran North,14,Clayton,30
-2010-08-27,Beaumont,6,Cleveland NJROTC,0
 2010-08-27,Central (Kansas City),6,Clinton,44
 2010-08-27,Lafayette County,6,Concordia,40
 2010-08-27,St. James,12,Cuba,24
@@ -60,7 +59,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-08-27,Macon,48,Kirksville,0
 2010-08-27,Versailles,39,Knob Noster,6
 2010-08-27,Highland,28,Knox County,16
-2010-08-27,Concordia,40,Lafayette County,6
 2010-08-27,Carl Junction,7,Lamar,38
 2010-08-27,Wellington-Napoleon,42,Lathrop,0
 2010-08-27,Maryville,7,Lawson,17
@@ -86,11 +84,9 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-08-27,Paris,6,Monroe City,46
 2010-08-27,Cassville,40,Mountain Grove,7
 2010-08-27,Camdenton,14,Nixa,21
-2010-08-27,Liberty North,0,Oak Park,55
 2010-08-27,Van-Far,0,Orchard Farm,49
 2010-08-27,Mid-Buchanan,27,Orrick,46
 2010-08-27,Webb City,31,Ozark,7
-2010-08-27,DeSoto,26,Pacific,6
 2010-08-27,Wright City,26,Palmyra,6
 2010-08-27,Liberty,35,Park Hill,14
 2010-08-27,Ladue Horton Watkins,41,Parkway Central,36
@@ -144,7 +140,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-08-27,Lee's Summit,57,William Chrisman,23
 2010-08-27,Reeds Spring,12,Willow Springs,22
 2010-08-27,Archie,35,Windsor,0
-2010-08-27,Priory,25,Windsor (Imperial),0
 2010-08-27,Kearney,45,Winnetonka,0
 2010-08-28,De Smet Jesuit,19,Hazelwood Central,20
 2010-08-28,Pattonville,24,Hazelwood East,6
@@ -221,7 +216,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-03,Odessa,40,Lafayette (St. Joseph),55
 2010-09-03,Lindbergh,48,Lafayette (Wildwood),10
 2010-09-03,Plattsburg,3,Lathrop,0
-2010-09-03,Hillcrest,6,Lebanon,17
 2010-09-03,Raytown,13,Lee's Summit North,31
 2010-09-03,Central (St. Joseph),0,Lee's Summit West,30
 2010-09-03,North Kansas City,20,Liberty,40
@@ -257,7 +251,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-03,Rockwood Summit,17,Parkway North,42
 2010-09-03,Hazelwood Central,14,Pattonville,7
 2010-09-03,Renaissance Academy,14,Pembroke Hill,28
-2010-09-03,DeSoto,27,Perryville,0
 2010-09-03,Liberal,0,Pierce City,43
 2010-09-03,Kearney,38,Platte County,0
 2010-09-03,Marionville,14,Pleasant Hope,6
@@ -268,7 +261,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-03,Bolivar,62,Reeds Spring,0
 2010-09-03,Nixa,27,Republic,13
 2010-09-03,Riverview Gardens,16,Rock Bridge,43
-2010-09-03,Parkway North,42,Rockwood Summit,17
 2010-09-03,Park Hill,35,Ruskin,13
 2010-09-03,Braymer,3,Schuyler County,21
 2010-09-03,Salem,0,Santa Fe,18
@@ -292,7 +284,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-03,Waynesville,0,Union,35
 2010-09-03,Webster Groves,45,University City,7
 2010-09-03,Ste. Genevieve,0,Valle Catholic,48
-2010-09-03,Union,35,Waynesville,0
 2010-09-03,Southern Boone,14,Versailles,28
 2010-09-03,Northwest (Cedar Hill),14,Vianney,44
 2010-09-03,Savannah,20,Warrensburg,21
@@ -407,7 +398,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-10,Rock Port,26,Polo,6
 2010-09-10,Westminster Christian Academy,0,Priory,28
 2010-09-10,Fort Osage,10,Raytown,0
-2010-09-10,Oak Grove,50,Renaissance Academy,20
 2010-09-10,Holden,8,Richmond,26
 2010-09-10,Ritenour,28,Riverview Gardens,34
 2010-09-10,Parkway West,20,Rockwood Summit,28
@@ -436,7 +426,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-10,Willow Springs,12,Thayer,47
 2010-09-10,Archie,3,Tipton,42
 2010-09-10,Lathrop,0,Trenton,34
-2010-09-10,St. Clair,22,Troy Buchanan,13
 2010-09-10,St. James,0,Union,48
 2010-09-10,Herculaneum,0,Valle Catholic,40
 2010-09-10,Montgomery County,21,Van-Far,12
@@ -452,7 +441,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-10,Paris,6,Westran,49
 2010-09-10,Carthage,48,Willard,0
 2010-09-10,Liberty North,14,William Chrisman,41
-2010-09-10,St. Mary's (Independence),22,Windsor,20
 2010-09-10,Principia,13,Windsor (Imperial),33
 2010-09-10,Veritas Christian Academy,6,Wright City,48
 2010-09-11,Winnetonka,21,Belton,8
@@ -464,12 +452,10 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-11,Ladue Horton Watkins,21,McCluer South-Berkeley,14
 2010-09-11,John Burroughs,21,MICDS,0
 2010-09-11,Savannah,38,Poplar Bluff,0
-2010-09-11,Poplar Bluff,0,Savannah,38
 2010-09-11,Roosevelt,14,West Plains,12
 2010-09-16,McCluer South-Berkeley,15,Clayton,24
 2010-09-16,MICDS,20,Helias Catholic,40
 2010-09-16,Ladue Horton Watkins,42,Jennings,6
-2010-09-16,Jennings,6,Ladue Horton Watkins,42
 2010-09-16,Pembroke Hill,60,Northeast (Kansas City),0
 2010-09-16,Seckman,21,Parkway West,56
 2010-09-16,Parkway North,49,Timberland,7
@@ -555,7 +541,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-17,Carthage,37,Nixa,14
 2010-09-17,Affton,19,Normandy Collaborative,28
 2010-09-17,Hallsville,14,North Callaway,42
-2010-09-17,Farmington,59,North County,6
 2010-09-17,Milan,42,North Shelby,30
 2010-09-17,Pembroke Hill,60,Northeast (Kansas City),0
 2010-09-17,Marquette,49,Northwest (Cedar Hill),12
@@ -619,10 +604,7 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-18,St. Mary's (Independence),12,Renaissance Academy,29
 2010-09-18,Soldan International Studies,29,Roosevelt,43
 2010-09-18,Tipton,44,Scotland County,0
-2010-09-18,Tipton,44,Scotland County,0
 2010-09-18,Transportation and Law,25,West Plains,6
-2010-09-18,West Plains,6,Transportation and Law,25
-2010-09-18,Miller Career Academy,21,Waynesville,14
 2010-09-18,Sacred Heart,28,Wentworth Military Academy,18
 2010-09-23,Hillcrest,28,Glendale,16
 2010-09-23,Joplin,16,Liberal,26
@@ -699,7 +681,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-24,Paris,13,Marceline,56
 2010-09-24,Sarcoxie,9,Marionville,28
 2010-09-24,Lindbergh,21,Marquette,35
-2010-09-24,Hannibal,47,Marshall,0
 2010-09-24,Logan-Rogersville,6,Marshfield,0
 2010-09-24,South Harrison,21,Maysville,8
 2010-09-24,Boonville,29,Mexico,36
@@ -707,7 +688,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-24,Osceola,6,Midway,36
 2010-09-24,Braymer,28,Milan,0
 2010-09-24,Fulton,7,Moberly,46
-2010-09-24,Carl Junction,14,Monett,41
 2010-09-24,South Shelby,33,Monroe City,0
 2010-09-24,Winfield,0,Montgomery County,48
 2010-09-24,Salem,34,Mountain Grove,7
@@ -887,7 +867,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-01,Chillicothe,28,Savannah,34
 2010-10-01,North Shelby,13,Schuyler County,72
 2010-10-01,Milan,6,Scotland County,13
-2010-10-01,Milan,6,Scotland County,13
 2010-10-01,Parkway North,35,Seckman,0
 2010-10-01,Central (New Madrid County),15,Sikeston,54
 2010-10-01,Ash Grove,25,South Shelby,51
@@ -913,7 +892,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-01,Republic,6,Webb City,41
 2010-10-01,Camdenton,42,West Plains,20
 2010-10-01,Marshfield,35,Willow Springs,31
-2010-10-01,Barat Academy,21,Winfield,42
 2010-10-01,Raytown,7,Winnetonka,28
 2010-10-01,Montgomery County,14,Wright City,51
 2010-10-02,Soldan International Studies,37,Carnahan,14
@@ -948,7 +926,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-08,Bishop LeBlond,21,Cameron,28
 2010-10-08,Cassville,42,Carl Junction,0
 2010-10-08,Dexter,14,Caruthersville,41
-2010-10-08,Carl Junction,0,Cassville,42
 2010-10-08,O'Hara,32,Center,49
 2010-10-08,Lincoln College Prep,26,Central (Kansas City),8
 2010-10-08,Monroe City,0,Centralia,33
@@ -976,7 +953,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-08,Sarcoxie,22,Greenfield,32
 2010-10-08,Oak Grove,7,Harrisonville,26
 2010-10-08,Hannibal,42,Helias Catholic,35
-2010-10-08,Charleston,7,Herculaneum,12
 2010-10-08,South Shelby,63,Highland,8
 2010-10-08,Pacific,32,Hillsboro,25
 2010-10-08,Carrollton,28,Holden,20
@@ -989,7 +965,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-08,Marshall,14,Kirksville,6
 2010-10-08,University City,0,Kirkwood,27
 2010-10-08,California,6,Knob Noster,7
-2010-10-08,Chillicothe,7,Lafayette (St. Joseph),45
 2010-10-08,Trenton,6,Lafayette County,50
 2010-10-08,Parkview,21,Lebanon,49
 2010-10-08,Blue Springs South,47,Lee's Summit,34
@@ -999,7 +974,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-08,Miller,54,Liberal,13
 2010-10-08,Central (St. Joseph),14,Liberty,27
 2010-10-08,Ava,13,Liberty (Mountain View),20
-2010-10-08,Appleton City,67,Lincoln,27
 2010-10-08,Northwest (Cedar Hill),7,Lindbergh,42
 2010-10-08,Bolivar,45,Logan-Rogersville,6
 2010-10-08,Orchard Farm,33,Lutheran St. Charles,14
@@ -1043,12 +1017,10 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-08,Marshfield,46,Reeds Spring,7
 2010-10-08,Carthage,49,Republic,7
 2010-10-08,Jefferson City,10,Rockhurst,34
-2010-10-08,Parkway Central,47,Rockwood Summit,14
 2010-10-08,Hillcrest,17,Rolla,38
 2010-10-08,Raymore-Peculiar,46,Ruskin,8
 2010-10-08,Cabool,0,Salem,48
 2010-10-08,North Shelby,53,Scotland County,13
-2010-10-08,North Shelby,13,Scotland County,53
 2010-10-08,Hayti,52,Seneca,14
 2010-10-08,Aurora,7,Seneca,27
 2010-10-08,St. Mary's (Independence),26,Sherwood,42
@@ -1058,7 +1030,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-08,Benton,27,Smithville,0
 2010-10-08,Tipton,28,Slater,0
 2010-10-08,Confluence Prep Academy Charter,6,St. Charles,40
-2010-10-08,Imagine College Prep Charter,20,St. Charles West,43
 2010-10-08,Hermann,0,St. Clair,51
 2010-10-08,Bishop DuBourg,10,St. Dominic,38
 2010-10-08,Southern Boone,24,St. Francis Borgia,21
@@ -1095,11 +1066,9 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-09,Riverview Gardens,24,McCluer North,56
 2010-10-09,McCluer South-Berkeley,6,Normandy Collaborative,32
 2010-10-09,Principia,0,Priory,40
-2010-10-09,Hogan Prep Academy Charter,31,Renaissance Academy,2
 2010-10-09,Hazelwood East,48,Ritenour,6
 2010-10-09,Transportation and Law,30,Soldan International Studies,0
 2010-10-14,Bishop DuBourg,24,Affton,50
-2010-10-14,Affton,50,Bishop DuBourg,24
 2010-10-14,Lebanon,42,Central (Springfield),9
 2010-10-14,Northeast (Kansas City),0,Lincoln College Prep,54
 2010-10-15,Sherwood,0,Adrian,34
@@ -1211,7 +1180,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-15,Crest Ridge,22,Santa Fe,41
 2010-10-15,Diamond,14,Sarcoxie,27
 2010-10-15,Knox County,19,Scotland County,20
-2010-10-15,Knox County,19,Scotland County,20
 2010-10-15,East Newton,6,Seneca,56
 2010-10-15,Perryville,7,Sikeston,54
 2010-10-15,Westran,49,Salem,0
@@ -1222,7 +1190,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-15,St. Charles West,14,St. Francis Borgia,17
 2010-10-15,Wentworth Military Academy,0,St. Mary's (Independence),42
 2010-10-15,Carrollton,54,St. Paul Lutheran (Concordia),14
-2010-10-15,Cameron,21,St. Pius X (Kansas City),32
 2010-10-15,Chaffee,40,St. Vincent,10
 2010-10-15,Lincoln,14,Tipton,47
 2010-10-15,Lift for Life Academy Charter,0,Transportation and Law,40
@@ -1235,7 +1202,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-15,Rolla,21,Waynesville,23
 2010-10-15,Chaminade College Prep,7,Webster Groves,39
 2010-10-15,Orrick,22,Wellington-Napoleon,28
-2010-10-15,St. Mary's (Independence),42,Wentworth Military Academy,0
 2010-10-15,Hillcrest,45,West Plains,0
 2010-10-15,Mid-Buchanan,14,West Platte,28
 2010-10-15,St. Charles,35,William Chrisman,36
@@ -1261,7 +1227,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-16,Lift for Life Academy Charter,0,Transportation and Law,40
 2010-10-16,Clayton,21,University City,14
 2010-10-16,Mark Twain,46,Veritas Christian Academy,7
-2010-10-16,Orchard Farm,21,Wright City,40
 2010-10-21,Sikeston,21,Central (Cape Girardeau),0
 2010-10-22,Windsor (Imperial),28,Affton,34
 2010-10-22,Osceola,28,Archie,14
@@ -1358,7 +1323,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-22,Central (Springfield),20,Parkview,48
 2010-10-22,Christian Brothers College,28,Parkway South,21
 2010-10-22,Francis Howell Central,7,Pattonville,37
-2010-10-22,Central (Kansas City),0,Pembroke Hill,50
 2010-10-22,Farmington,43,Perryville,7
 2010-10-22,Marionville,7,Pierce City,14
 2010-10-22,Lafayette (St. Joseph),12,Platte County,28
@@ -1370,7 +1334,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-22,Poplar Bluff,6,Rockwood Summit,40
 2010-10-22,Camdenton,35,Rolla,14
 2010-10-22,Lee's Summit West,47,Ruskin,12
-2010-10-22,Concordia,68,Santa Fe,0
 2010-10-22,Benton,12,Savannah,28
 2010-10-22,Scotland County,26,Schuyler County,57
 2010-10-22,Crystal City,49,Seneca,21
@@ -1388,7 +1351,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-22,Salem,35,St. James,13
 2010-10-22,Miller Career Academy,34,Webster Groves,41
 2010-10-22,Herculaneum,54,St. Pius X (Festus),32
-2010-10-22,Maryville,35,St. Pius X (Kansas City),0
 2010-10-22,Central (St. Joseph),0,Staley,37
 2010-10-22,John F. Kennedy,12,Ste. Genevieve,41
 2010-10-22,Ash Grove,14,Strafford,68
@@ -1425,7 +1387,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-23,Orrick,30,St. Mary's (Independence),14
 2010-10-23,Waynesville,20,West Plains,6
 2010-10-23,Maplewood-Richmond Hts.,38,Transportation and Law,7
-2010-10-23,West Plains,6,Waynesville,20
 2010-10-27,University City,22,Ladue Horton Watkins,35
 2010-10-28,Festus,32,Affton,0
 2010-10-28,Osceola,54,Appleton City,18
@@ -1499,7 +1460,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-28,Clinton,21,Pleasant Hill,41
 2010-10-28,El Dorado Springs,12,Pleasant Hope,0
 2010-10-28,Seckman,42,Poplar Bluff,14
-2010-10-28,North County,42,Potosi,56
 2010-10-28,William Chrisman,30,Raytown,40
 2010-10-28,Hillcrest,49,Republic,14
 2010-10-28,Tipton,45,Sacred Heart,0
@@ -1521,7 +1481,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-28,Richmond,61,Versailles,22
 2010-10-28,Boonville,27,Versailles,14
 2010-10-28,Marshall,6,Warrensburg,39
-2010-10-28,St. Mary's (Independence),0,Wellington-Napoleon,47
 2010-10-28,East Buchanan,20,West Platte,41
 2010-10-28,Fayette,12,Westran,73
 2010-10-28,Lebanon,50,Willard,6
@@ -1544,7 +1503,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-29,Oakville,0,Eureka,47
 2010-10-29,Northwest (Cedar Hill),20,Fox,28
 2010-10-29,Francis Howell North,21,Francis Howell Central,28
-2010-10-29,Francis Howell Central,28,Francis Howell North,21
 2010-10-29,Ft. Zumwalt North,41,Ft. Zumwalt South,20
 2010-10-29,Missouri Military Academy,0,Fulton,49
 2010-10-29,Moberly,0,Hannibal,57
@@ -1559,7 +1517,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-29,Veritas Christian Academy,33,Lutheran St. Charles,30
 2010-10-29,Parkway South,28,Marquette,54
 2010-10-29,Putnam County,14,Milan,19
-2010-10-29,Fulton,49,Missouri Military Academy,0
 2010-10-29,Winnetonka,7,North Kansas City,38
 2010-10-29,Fort Osage,14,Park Hill South,20
 2010-10-29,Chaminade College Prep,26,Parkway Central,25
@@ -1586,7 +1543,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-30,Priory,12,John Burroughs,28
 2010-10-30,Ritenour,31,McCluer North,49
 2010-10-30,Lutheran North,35,McCluer South-Berkeley,20
-2010-10-30,Hazelwood East,60,Normandy Collaborative,34
 2010-10-30,McCluer,47,Riverview Gardens,42
 2010-10-30,Miller Career Academy,26,Roosevelt,30
 2010-10-30,Soldan International Studies,30,West Plains,28
@@ -1656,7 +1612,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-11-03,Lee's Summit,56,Nixa,31
 2010-11-03,Raytown,16,Park Hill South,34
 2010-11-03,Staley,22,Fort Osage,0
-2010-11-03,Trenton,0,Lexington,32
 2010-11-05,Lindbergh,14,Eureka,6
 2010-11-05,Fox,0,De Smet Jesuit,49
 2010-11-05,McCluer North,30,Christian Brothers College,32
