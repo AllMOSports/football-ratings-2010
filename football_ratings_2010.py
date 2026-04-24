@@ -76,6 +76,7 @@ def build_id_to_classname(team_to_class, schools_csv=SCHOOLS_CSV):
         "431": "Salisbury",
         "435": "Scott City",
         "443": "Skyline",
+        "193": "Slater",
         "194": "Smith-Cotton",
         "197": "South Callaway",
         "549": "St. Mary's South Side",
