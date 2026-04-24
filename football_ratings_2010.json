@@ -1,5 +1,5 @@
 {
-  "last_updated": "April 24, 2026 at 08:57 PM",
+  "last_updated": "April 24, 2026 at 09:25 PM",
   "league_average": 24.69,
   "teams": [
     {
@@ -2149,17 +2149,6 @@
     },
     {
       "ovr_rank": 196,
-      "school": "Schuyler County",
-      "classification": 1,
-      "district": 10,
-      "ovr_rating": -9.87,
-      "off_rating": -4.41,
-      "off_rank": 185,
-      "def_rating": -5.46,
-      "def_rank": 198
-    },
-    {
-      "ovr_rank": 197,
       "school": "Orrick",
       "classification": 1,
       "district": 13,
@@ -2168,6 +2157,17 @@
       "off_rank": 181,
       "def_rating": -5.98,
       "def_rank": 203
+    },
+    {
+      "ovr_rank": 197,
+      "school": "Schuyler County",
+      "classification": 1,
+      "district": 10,
+      "ovr_rating": -9.87,
+      "off_rating": -4.41,
+      "off_rank": 185,
+      "def_rating": -5.46,
+      "def_rank": 198
     },
     {
       "ovr_rank": 198,
@@ -2567,17 +2567,6 @@
     },
     {
       "ovr_rank": 234,
-      "school": "Northwest (Cedar Hill)",
-      "classification": 6,
-      "district": 1,
-      "ovr_rating": -20.3,
-      "off_rating": -12.47,
-      "off_rank": 240,
-      "def_rating": -7.83,
-      "def_rank": 215
-    },
-    {
-      "ovr_rank": 235,
       "school": "Putnam County",
       "classification": 1,
       "district": 12,
@@ -2586,6 +2575,17 @@
       "off_rank": 209,
       "def_rating": -12.22,
       "def_rank": 250
+    },
+    {
+      "ovr_rank": 235,
+      "school": "Northwest (Cedar Hill)",
+      "classification": 6,
+      "district": 1,
+      "ovr_rating": -20.3,
+      "off_rating": -12.47,
+      "off_rank": 240,
+      "def_rating": -7.83,
+      "def_rank": 215
     },
     {
       "ovr_rank": 236,
@@ -2809,17 +2809,6 @@
     },
     {
       "ovr_rank": 256,
-      "school": "St. Mary's (Independence)",
-      "classification": 1,
-      "district": 13,
-      "ovr_rating": -27.16,
-      "off_rating": -14.21,
-      "off_rank": 251,
-      "def_rating": -12.95,
-      "def_rank": 254
-    },
-    {
-      "ovr_rank": 257,
       "school": "Principia",
       "classification": 2,
       "district": 3,
@@ -2828,6 +2817,17 @@
       "off_rank": 262,
       "def_rating": -10.44,
       "def_rank": 237
+    },
+    {
+      "ovr_rank": 257,
+      "school": "St. Mary's (Independence)",
+      "classification": 1,
+      "district": 13,
+      "ovr_rating": -27.16,
+      "off_rating": -14.21,
+      "off_rank": 251,
+      "def_rating": -12.95,
+      "def_rank": 254
     },
     {
       "ovr_rank": 258,

@@ -1,5 +1,5 @@
 {
-  "last_updated": "April 24, 2026 at 08:57 PM",
+  "last_updated": "April 24, 2026 at 09:25 PM",
   "league_average": 24.69,
   "classification": 1,
   "teams": [
@@ -225,17 +225,6 @@
     },
     {
       "ovr_rank": 21,
-      "school": "Schuyler County",
-      "classification": 1,
-      "district": 10,
-      "ovr_rating": -9.87,
-      "off_rating": -4.41,
-      "off_rank": 17,
-      "def_rating": -5.46,
-      "def_rank": 21
-    },
-    {
-      "ovr_rank": 22,
       "school": "Orrick",
       "classification": 1,
       "district": 13,
@@ -244,6 +233,17 @@
       "off_rank": 15,
       "def_rating": -5.98,
       "def_rank": 25
+    },
+    {
+      "ovr_rank": 22,
+      "school": "Schuyler County",
+      "classification": 1,
+      "district": 10,
+      "ovr_rating": -9.87,
+      "off_rating": -4.41,
+      "off_rank": 17,
+      "def_rating": -5.46,
+      "def_rank": 21
     },
     {
       "ovr_rank": 23,
