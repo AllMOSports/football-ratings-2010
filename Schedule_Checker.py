@@ -215,7 +215,7 @@ def main():
         teams_df.at[idx, "school_id"] = sid
         teams_df.at[idx, "id_found"]  = sid is not None
  
-    teams_df[["Team Name", "Class", "District", "school_id", "id_found"]].to_csv(OUTPUT_IDS, index=False)
+    teams_df[["Team Name", "Class", "district", "school_id", "id_found"]].to_csv(OUTPUT_IDS, index=False)
  
     n_found = int(teams_df["id_found"].sum())
     print(f"\nSchool IDs resolved: {n_found}/{len(teams_df)}")
