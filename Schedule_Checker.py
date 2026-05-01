@@ -25,6 +25,8 @@ import json
 import re
 import time
 import unicodedata
+from collections import defaultdict
+from datetime import datetime
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
@@ -90,16 +92,48 @@ def load_ranked_teams(path):
  
  
 def load_scoreboard(path):
+    """
+    Returns a dict mapping frozenset({norm_team_a, norm_team_b}) -> list of parsed dates.
+    We use a 7-day window instead of exact date matching because MSHSAA schedule pages
+    store the scheduled/week-end date, not always the actual game date.
+    """
+    from collections import defaultdict
     df = pd.read_csv(path)
     df = df[["Date", "Home Team", "Away Team"]].dropna(subset=["Home Team", "Away Team"])
     df["Date"]      = df["Date"].astype(str).str.strip()
     df["norm_home"] = df["Home Team"].apply(normalize)
     df["norm_away"] = df["Away Team"].apply(normalize)
  
-    game_keys = set()
+    pair_dates = defaultdict(list)
     for _, row in df.iterrows():
-        game_keys.add(frozenset([row["norm_home"], row["norm_away"], row["Date"]]))
-    return game_keys, df
+        pair = frozenset([row["norm_home"], row["norm_away"]])
+        parsed = None
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y"):
+            try:
+                parsed = datetime.strptime(row["Date"], fmt)
+                break
+            except Exception:
+                pass
+        pair_dates[pair].append(parsed)
+    return pair_dates, df
+ 
+ 
+def game_in_scoreboard(team_norm, opp_norm, game_date_str, pair_dates, window_days=7):
+    """
+    Returns True if the scoreboard contains a game between team and opponent
+    within window_days of the given date.
+    """
+    pair = frozenset([team_norm, opp_norm])
+    if pair not in pair_dates:
+        return False
+    try:
+        gdate = datetime.strptime(game_date_str, "%m/%d/%Y")
+    except Exception:
+        return False
+    return any(
+        sbdate is not None and abs((sbdate - gdate).days) <= window_days
+        for sbdate in pair_dates[pair]
+    )
  
  
 # ─────────────────────────────────────────────────────────────────────────────
@@ -184,9 +218,27 @@ def parse_schedule_page(html):
     soup  = BeautifulSoup(html, "html.parser")
     games = []
  
-    # Locate the schedule table by looking for the header row with Date/Opponent/Score
+    # Confirm the active level of play tab is Varsity.
+    # The LevelsOfPlay ul marks the active tab with class "level current".
+    # If it exists and the active tab is NOT Varsity, skip this page entirely.
+    levels_ul = soup.find("ul", id="LevelsOfPlay")
+    if levels_ul:
+        active_li = levels_ul.find("li", class_="current")
+        if active_li:
+            active_text = active_li.get_text(strip=True).lower()
+            if "varsity" not in active_text:
+                print(f"  (skipping — active tab is not Varsity: {active_text!r})")
+                return games
+ 
+    # Only parse the schedule from the dedicated schedule div, which contains
+    # whichever level-of-play tab is currently active (should be Varsity).
+    schedule_div = soup.find("div", id="ctl00_contentMain_divSchedule")
+    if not schedule_div:
+        return games
+ 
+    # Locate the schedule table inside that div
     schedule_table = None
-    for table in soup.find_all("table"):
+    for table in schedule_div.find_all("table"):
         header_text = table.get_text()
         if "Date" in header_text and "Opponent" in header_text and "Score" in header_text:
             schedule_table = table
@@ -238,12 +290,8 @@ def parse_schedule_page(html):
  
  
 def opponent_in_rankings(opp_norm, ranked_norms):
-    if opp_norm in ranked_norms:
-        return True
-    for rn in ranked_norms:
-        if rn and opp_norm and (rn in opp_norm or opp_norm in rn) and len(min(rn, opp_norm, key=len)) > 4:
-            return True
-    return False
+    """Exact normalized match only — opponent must be in classifications.json."""
+    return opp_norm in ranked_norms
  
  
 # ─────────────────────────────────────────────────────────────────────────────
@@ -257,8 +305,8 @@ def main():
     print(f"  {len(teams_df)} ranked teams.")
  
     print("Loading existing scoreboard ...")
-    game_keys, _ = load_scoreboard(SCOREBOARD_FILE)
-    print(f"  {len(game_keys)} games in scoreboard.")
+    pair_dates, _ = load_scoreboard(SCOREBOARD_FILE)
+    print(f"  {len(pair_dates)} unique team pairs in scoreboard.")
  
     id_map = fetch_school_id_map()
  
@@ -311,8 +359,7 @@ def main():
                 if not opponent_in_rankings(opp_norm, ranked_norms):
                     continue
  
-                game_key = frozenset([team_norm, opp_norm, game["date"]])
-                if game_key not in game_keys:
+                if not game_in_scoreboard(team_norm, opp_norm, game["date"], pair_dates):
                     print(f"  MISSING: {game['date']}  vs  {game['opponent']}"
                           f"  ({game['home_away']})  {game['score_team']}-{game['score_opp']}")
                     missing_rows.append({
@@ -357,4 +404,3 @@ def main():
  
 if __name__ == "__main__":
     main()
- 
