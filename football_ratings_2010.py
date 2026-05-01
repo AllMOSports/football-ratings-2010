@@ -21,22 +21,64 @@ CLASSIFICATIONS_PATH  = "classifications.json"
 SCHOOLS_CSV           = "mshsaa_schools.csv"
 ITERATIONS            = 1000
 LEARNING_RATE         = 0.1
-COMPETITIVE_THRESHOLD = 45
-
+COMPETITIVE_THRESHOLD = 40
+ 
 # ---------------------------------------------------------------------------
 # MANUAL GAMES (not listed on MSHSAA Scoreboard)
 # ---------------------------------------------------------------------------
 # Add any games missing from the MSHSAA scoreboard here.
 # Format: ("YYYY-MM-DD", "Team 1 Name", score1, "Team 2 Name", score2)
 # Team names must match exactly the names in classifications.json.
-
+ 
 MANUAL_GAMES = [
-    ("2010-09-13", "Staley", 61, "William Chrisman", 7),
-    ("2010-09-20", "Blue Springs South", 23, "Staley", 20),
-    ("2010-09-27", "Belton", 7, "Staley", 45),
-    ("2010-10-04", "Staley", 12, "Fort Osage", 15),
-    ("2010-10-11", "Staley", 0, "Kearney", 42),
-    ("2010-10-18", "Oak Park", 0, "Staley", 42),
+    ("2010-10-18", "Valle Catholic", 34, "DeSoto", 28),
+    ("2010-08-30", "Miller", 36, "Logan-Rogersville", 0),
+    ("2010-09-07", "Miller", 14, "Neosho", 8),
+    ("2010-09-13", "Miller", 46, "Jasper", 0),
+    ("2010-09-20", "Miller", 46, "Greenfield", 6),
+    ("2010-09-27", "Miller", 48, "Diamond", 0),
+    ("2010-10-11", "Miller", 30, "Springfield Catholic", 12),
+    ("2010-10-18", "Miller", 14, "Webb City", 34),
+    ("2010-09-13", "Skyline", 12, "Marionville", 6),
+    ("2010-09-20", "Skyline", 32, "Cole Camp with Green Ridge", 12),
+    ("2010-09-27", "Skyline", 8, "Strafford", 14),
+    ("2010-10-11", "Skyline", 12, "Stockton", 30),
+    ("2010-10-18", "Windsor", 0, "Cole Camp with Green Ridge", 55),
+    ("2010-09-07", "Louisiana", 6, "Palmyra", 38),
+    ("2010-09-13", "Louisiana", 0, "Clopton with Elsberry", 27),
+    ("2010-09-13", "Paris", 40, "Fayette", 6),
+    ("2010-09-20", "Paris", 24, "Hallsville", 14),
+    ("2010-09-27", "Paris", 29, "South Shelby", 14),
+    ("2010-08-30", "Caruthersville", 20, "East Prairie", 14),
+    ("2010-09-02", "Caruthersville", 32, "Dexter", 6),
+    ("2010-09-27", "Caruthersville", 22, "Charleston", 0),
+    ("2010-10-04", "Caruthersville", 28, "Kennett", 16),
+    ("2010-10-11", "Caruthersville", 0, "Sikeston", 18),
+    ("2010-10-11", "Montgomery County", 60, "Winfield", 0),
+    ("2010-09-13", "South Callaway", 16, "Southern Boone", 8),
+    ("2010-09-20", "South Callaway", 0, "Helias Catholic", 27),
+    ("2010-09-27", "South Callaway", 14, "Hallsville", 0),
+    ("2010-10-04", "South Callaway", 14, "Cuba", 22),
+    ("2010-10-11", "South Callaway", 16, "Wright City", 0),
+    ("2010-10-04", "Brookfield", 22, "Macon", 7),
+    ("2010-09-20", "Centralia", 20, "Macon", 15),
+    ("2010-09-30", "Centralia", 21, "Macon", 14),
+    ("2010-09-02", "Macon", 20, "Mexico", 0),
+    ("2010-09-16", "Macon", 19, "Palmyra", 13),
+    ("2010-09-27", "Macon", 28, "Palmyra", 7),
+    ("2010-10-11", "Macon", 42, "Monroe City", 0),
+    ("2010-10-18", "Macon", 47, "South Shelby", 34),
+    ("2010-09-07", "Adrian", 44, "Appleton City", 6),
+    ("2010-09-20", "Adrian", 6, "Harrisonville", 34),
+    ("2010-09-27", "Adrian", 28, "Osceola", 0),
+    ("2010-10-11", "Adrian", 12, "Clinton", 6),
+    ("2010-08-30", "California", 20, "Versailles", 12),
+    ("2010-09-07", "California", 32, "Osage", 0),
+    ("2010-09-20", "California", 58, "Eldon", 12),
+    ("2010-10-04", "California", 24, "North Callaway", 14),
+    ("2010-10-11", "California", 32, "Smith-Cotton", 12),
+    ("2010-09-27", "East (Kansas City)", 6, "Hogan Prep Academy Charter", 18),
+    ("2010-08-19", "McCluer", 14, "Kirkwood", 51),
 ]
  
 HEADERS = {
@@ -501,6 +543,83 @@ def save_class_jsons(off_rating, def_rating, ovr_rating, league_avg,
         ))
  
  
+ 
+# ---------------------------------------------------------------------------
+# CSV RANKINGS OUTPUT
+# ---------------------------------------------------------------------------
+ 
+def save_rankings_csv(off_rating, def_rating, ovr_rating,
+                      team_to_class, team_to_district,
+                      class_filter=None):
+    """
+    Save a rankings CSV for either all teams (class_filter=None) or a
+    specific class.  Rankings (OFF Rank, DEF Rank, OVR Rank) are computed
+    within the pool so class CSVs show class-specific ranks.
+ 
+    Columns: School, OFF Rating, DEF Rating, OVR Rating,
+             OFF Rank, DEF Rank, OVR Rank
+    """
+    all_teams = list(ovr_rating.keys())
+ 
+    pool = (
+        [t for t in all_teams if team_to_class.get(t) == class_filter]
+        if class_filter is not None
+        else all_teams
+    )
+ 
+    if not pool:
+        label = f"Class {class_filter}" if class_filter else "Overall"
+        print(f"  {label}: no teams — skipping CSV.")
+        return
+ 
+    ovr_sorted = sorted(pool, key=lambda t: ovr_rating[t], reverse=True)
+    off_sorted = sorted(pool, key=lambda t: off_rating[t], reverse=True)
+    def_sorted = sorted(pool, key=lambda t: def_rating[t], reverse=True)
+ 
+    ovr_rank = {t: i + 1 for i, t in enumerate(ovr_sorted)}
+    off_rank = {t: i + 1 for i, t in enumerate(off_sorted)}
+    def_rank = {t: i + 1 for i, t in enumerate(def_sorted)}
+ 
+    rows = [
+        {
+            "School":      t,
+            "OFF Rating":  round(off_rating[t], 2),
+            "DEF Rating":  round(def_rating[t], 2),
+            "OVR Rating":  round(ovr_rating[t], 2),
+            "OFF Rank":    off_rank[t],
+            "DEF Rank":    def_rank[t],
+            "OVR Rank":    ovr_rank[t],
+        }
+        for t in ovr_sorted
+    ]
+ 
+    df = pd.DataFrame(rows, columns=[
+        "School", "OFF Rating", "DEF Rating", "OVR Rating",
+        "OFF Rank", "DEF Rank", "OVR Rank"
+    ])
+ 
+    if class_filter is None:
+        path  = "football_rankings_2010_all.csv"
+        label = "All teams"
+    else:
+        path  = f"football_rankings_2010_class{class_filter}.csv"
+        label = f"Class {class_filter}"
+ 
+    df.to_csv(path, index=False)
+    print(f"  {label}: {len(df)} teams — {path}")
+ 
+ 
+def save_all_rankings_csvs(off_rating, def_rating, ovr_rating,
+                           team_to_class, team_to_district):
+    """Save overall + one CSV per class (1-6)."""
+    save_rankings_csv(off_rating, def_rating, ovr_rating,
+                      team_to_class, team_to_district,
+                      class_filter=None)
+    for cls in range(1, 7):
+        save_rankings_csv(off_rating, def_rating, ovr_rating,
+                          team_to_class, team_to_district,
+                          class_filter=cls)
+ 
 # ---------------------------------------------------------------------------
 # MAIN
 # ---------------------------------------------------------------------------
@@ -526,7 +645,7 @@ if __name__ == "__main__":
     if MANUAL_GAMES:
         print(f"\nAdding {len(MANUAL_GAMES)} manual game(s)...")
         all_games.extend(MANUAL_GAMES)
-
+ 
     print("\nDeduplicating games...")
     all_games = deduplicate_games(all_games)
  
@@ -547,5 +666,9 @@ if __name__ == "__main__":
     print("\nSaving per-class ratings JSONs...")
     save_class_jsons(off_rating, def_rating, ovr_rating, league_avg,
                      team_to_class, team_to_district)
+ 
+    print("\nSaving rankings CSVs...")
+    save_all_rankings_csvs(off_rating, def_rating, ovr_rating,
+                           team_to_class, team_to_district)
  
     print("\n=== Done ===")
