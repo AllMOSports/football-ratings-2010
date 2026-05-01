@@ -1,12 +1,11 @@
 """
 MSHSAA Schedule Checker — 2010 Football Season
 ===============================================
-Compares each ranked team's MSHSAA schedule page against the existing
-scoreboard CSV.  Any game found on the MSHSAA page that is NOT already
-in the scoreboard is flagged as a missing game.
+Uses Selenium + headless Chrome to fully render each MSHSAA schedule page
+(including JavaScript), then compares games against the existing scoreboard.
  
-Per your requirement, only games where the OPPONENT is also a ranked
-team (in the JSON) are checked — so out-of-ranking games are ignored.
+Only games where the opponent is also a ranked team (in classifications.json)
+are flagged as missing.
  
 Outputs
 -------
@@ -15,13 +14,11 @@ mshsaa_school_ids.csv      – team-name to MSHSAA school ID map (for review)
  
 Requirements
 ------------
-    pip install requests beautifulsoup4 pandas
+    pip install selenium requests beautifulsoup4 pandas webdriver-manager
  
 Usage
 -----
     python mshsaa_schedule_checker.py
- 
-The script politely rate-limits itself (1.5 s between requests).
 """
  
 import json
@@ -32,6 +29,14 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
  
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
+ 
 # ── File paths ────────────────────────────────────────────────────────────────
 TEAMS_FILE      = "classifications.json"
 SCOREBOARD_FILE = "football_scoreboard_2010.csv"
@@ -39,11 +44,15 @@ OUTPUT_MISSING  = "mshsaa_missing_games.csv"
 OUTPUT_IDS      = "mshsaa_school_ids.csv"
  
 # alg=19 is the MSHSAA 11-Man Football activity code
-SCHEDULE_URL  = "https://www.mshsaa.org/MySchool/Schedule.aspx?s={sid}&alg=19&year=2010"
-LISTING_URL   = "https://www.mshsaa.org/Schools/SchoolListing.aspx"
+SCHEDULE_URL = "https://www.mshsaa.org/MySchool/Schedule.aspx?s={sid}&alg=19&year=2010"
+LISTING_URL  = "https://www.mshsaa.org/Schools/SchoolListing.aspx"
  
-REQUEST_DELAY = 1.5   # seconds between HTTP requests
-HEADERS       = {"User-Agent": "Mozilla/5.0 (MSHSAA-ScheduleChecker/1.0)"}
+# Seconds to wait for JS table to appear on each page
+JS_WAIT_TIMEOUT = 15
+# Seconds to pause between page loads (be polite to the server)
+REQUEST_DELAY   = 2.0
+ 
+HEADERS = {"User-Agent": "Mozilla/5.0 (MSHSAA-ScheduleChecker/1.0)"}
  
  
 # ─────────────────────────────────────────────────────────────────────────────
@@ -73,9 +82,7 @@ def strip_suffix(norm_key):
 def load_ranked_teams(path):
     with open(path, "r") as f:
         data = json.load(f)
-    teams = data["teams"]
-    df = pd.DataFrame(teams)
-    # Rename to match the rest of the script
+    df = pd.DataFrame(data["teams"])
     df = df.rename(columns={"school": "Team Name", "classification": "Class"})
     df["Team Name"] = df["Team Name"].astype(str).str.strip()
     df["norm"]      = df["Team Name"].apply(normalize)
@@ -96,14 +103,50 @@ def load_scoreboard(path):
  
  
 # ─────────────────────────────────────────────────────────────────────────────
-#  School-ID lookup
+#  Selenium browser setup
 # ─────────────────────────────────────────────────────────────────────────────
  
-def fetch_school_id_map(session):
+def build_driver():
+    """Return a headless Chrome WebDriver."""
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument(f"user-agent=Mozilla/5.0 (MSHSAA-ScheduleChecker/1.0)")
+ 
+    service = Service(ChromeDriverManager().install())
+    driver  = webdriver.Chrome(service=service, options=options)
+    return driver
+ 
+ 
+def get_rendered_html(driver, url, wait_selector="table"):
+    """
+    Load a URL in the headless browser, wait for a CSS selector to appear,
+    then return the fully-rendered page HTML.
+    """
+    driver.get(url)
+    try:
+        WebDriverWait(driver, JS_WAIT_TIMEOUT).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, wait_selector))
+        )
+    except Exception:
+        pass  # Return whatever HTML we have even if timeout
+    return driver.page_source
+ 
+ 
+# ─────────────────────────────────────────────────────────────────────────────
+#  School-ID lookup  (uses plain requests — listing page is server-rendered)
+# ─────────────────────────────────────────────────────────────────────────────
+ 
+def fetch_school_id_map():
     print("Fetching MSHSAA school listing ...")
+    session = requests.Session()
+    session.headers.update(HEADERS)
     resp = session.get(LISTING_URL, timeout=30)
     resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
+    soup   = BeautifulSoup(resp.text, "html.parser")
     id_map = {}
     for a in soup.select("a[href*='MySchool']"):
         m = re.search(r"[?&]s=(\d+)", a.get("href", ""))
@@ -117,10 +160,8 @@ def fetch_school_id_map(session):
 def find_school_id(team_name, norm, id_map):
     stripped = {strip_suffix(k): v for k, v in id_map.items()}
  
-    if norm in id_map:
-        return id_map[norm]
-    if norm in stripped:
-        return stripped[norm]
+    if norm in id_map:      return id_map[norm]
+    if norm in stripped:    return stripped[norm]
  
     candidates = [(k, v) for k, v in stripped.items()
                   if k.startswith(norm) or norm in k]
@@ -193,9 +234,6 @@ def opponent_in_rankings(opp_norm, ranked_norms):
 # ─────────────────────────────────────────────────────────────────────────────
  
 def main():
-    session = requests.Session()
-    session.headers.update(HEADERS)
- 
     print("Loading ranked teams ...")
     teams_df     = load_ranked_teams(TEAMS_FILE)
     ranked_norms = set(teams_df["norm"].tolist())
@@ -205,8 +243,7 @@ def main():
     game_keys, _ = load_scoreboard(SCOREBOARD_FILE)
     print(f"  {len(game_keys)} games in scoreboard.")
  
-    id_map = fetch_school_id_map(session)
-    time.sleep(REQUEST_DELAY)
+    id_map = fetch_school_id_map()
  
     teams_df["school_id"] = None
     teams_df["id_found"]  = False
@@ -222,55 +259,61 @@ def main():
     for nm in teams_df[~teams_df["id_found"]]["Team Name"].tolist():
         print(f"  No ID found: {nm}")
  
-    missing_rows = []
+    print("\nStarting headless browser ...")
+    driver = build_driver()
+ 
+    missing_rows  = []
     teams_with_id = teams_df[teams_df["id_found"]].copy()
-    total = len(teams_with_id)
+    total         = len(teams_with_id)
  
-    for i, (_, team_row) in enumerate(teams_with_id.iterrows(), 1):
-        team_name = team_row["Team Name"]
-        team_norm = team_row["norm"]
-        sid       = int(team_row["school_id"])
-        url       = SCHEDULE_URL.format(sid=sid)
+    try:
+        for i, (_, team_row) in enumerate(teams_with_id.iterrows(), 1):
+            team_name = team_row["Team Name"]
+            team_norm = team_row["norm"]
+            sid       = int(team_row["school_id"])
+            url       = SCHEDULE_URL.format(sid=sid)
  
-        print(f"\n[{i}/{total}] {team_name}  (ID={sid})")
-        try:
-            resp = session.get(url, timeout=30)
-            resp.raise_for_status()
-        except requests.RequestException as exc:
-            print(f"  WARNING: Skipped — {exc}")
-            time.sleep(REQUEST_DELAY)
-            continue
- 
-        games = parse_schedule_page(resp.text)
-        time.sleep(REQUEST_DELAY)
- 
-        if not games:
-            print("  (no game rows parsed)")
-            continue
- 
-        print(f"  {len(games)} games on MSHSAA page.")
-        for game in games:
-            opp_norm = game["opponent_norm"]
-            if not opponent_in_rankings(opp_norm, ranked_norms):
+            print(f"\n[{i}/{total}] {team_name}  (ID={sid})")
+            try:
+                html = get_rendered_html(driver, url)
+            except Exception as exc:
+                print(f"  WARNING: Skipped — {exc}")
+                time.sleep(REQUEST_DELAY)
                 continue
  
-            game_key = frozenset([team_norm, opp_norm, game["date"]])
-            if game_key not in game_keys:
-                print(f"  MISSING: {game['date']}  vs  {game['opponent']}"
-                      f"  ({game['home_away']})  {game['score_team']}-{game['score_opp']}")
-                missing_rows.append({
-                    "Ranked Team":    team_name,
-                    "Team School ID": sid,
-                    "Date":           game["date"],
-                    "Opponent":       game["opponent"],
-                    "Opponent Norm":  opp_norm,
-                    "Home/Away":      game["home_away"],
-                    "Team Score":     game["score_team"],
-                    "Opp Score":      game["score_opp"],
-                    "MSHSAA URL":     url,
-                })
-            else:
-                print(f"  OK: {game['date']}  vs  {game['opponent']}")
+            games = parse_schedule_page(html)
+            time.sleep(REQUEST_DELAY)
+ 
+            if not games:
+                print("  (no game rows parsed)")
+                continue
+ 
+            print(f"  {len(games)} games on MSHSAA page.")
+            for game in games:
+                opp_norm = game["opponent_norm"]
+                if not opponent_in_rankings(opp_norm, ranked_norms):
+                    continue
+ 
+                game_key = frozenset([team_norm, opp_norm, game["date"]])
+                if game_key not in game_keys:
+                    print(f"  MISSING: {game['date']}  vs  {game['opponent']}"
+                          f"  ({game['home_away']})  {game['score_team']}-{game['score_opp']}")
+                    missing_rows.append({
+                        "Ranked Team":    team_name,
+                        "Team School ID": sid,
+                        "Date":           game["date"],
+                        "Opponent":       game["opponent"],
+                        "Opponent Norm":  opp_norm,
+                        "Home/Away":      game["home_away"],
+                        "Team Score":     game["score_team"],
+                        "Opp Score":      game["score_opp"],
+                        "MSHSAA URL":     url,
+                    })
+                else:
+                    print(f"  OK: {game['date']}  vs  {game['opponent']}")
+ 
+    finally:
+        driver.quit()
  
     print(f"\n{'='*60}")
     if missing_rows:
@@ -286,6 +329,10 @@ def main():
         missing_df.to_csv(OUTPUT_MISSING, index=False)
         print(f"Done. {len(missing_df)} unique missing games -> {OUTPUT_MISSING}")
     else:
+        # Always write the file so the GitHub Actions artifact upload doesn't fail
+        pd.DataFrame(columns=["Ranked Team","Team School ID","Date","Opponent",
+                               "Home/Away","Team Score","Opp Score","MSHSAA URL"]
+                     ).to_csv(OUTPUT_MISSING, index=False)
         print("No missing games detected.")
  
     print(f"School ID map -> {OUTPUT_IDS}")
