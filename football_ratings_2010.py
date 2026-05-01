@@ -21,7 +21,23 @@ CLASSIFICATIONS_PATH  = "classifications.json"
 SCHOOLS_CSV           = "mshsaa_schools.csv"
 ITERATIONS            = 1000
 LEARNING_RATE         = 0.1
-COMPETITIVE_THRESHOLD = 35
+COMPETITIVE_THRESHOLD = 45
+
+# ---------------------------------------------------------------------------
+# MANUAL GAMES (not listed on MSHSAA Scoreboard)
+# ---------------------------------------------------------------------------
+# Add any games missing from the MSHSAA scoreboard here.
+# Format: ("YYYY-MM-DD", "Team 1 Name", score1, "Team 2 Name", score2)
+# Team names must match exactly the names in classifications.json.
+
+MANUAL_GAMES = [
+    ("2010-09-13", "Staley", 61, "William Chrisman", 7),
+    ("2010-09-20", "Blue Springs South", 23, "Staley", 20),
+    ("2010-09-27", "Belton", 7, "Staley", 45),
+    ("2010-10-04", "Staley", 12, "Fort Osage", 15),
+    ("2010-10-11", "Staley", 0, "Kearney", 42),
+    ("2010-10-18", "Oak Park", 0, "Staley", 42),
+]
  
 HEADERS = {
     "User-Agent": (
@@ -67,10 +83,8 @@ def build_id_to_classname(team_to_class, schools_csv=SCHOOLS_CSV):
     """
     MANUAL_OVERRIDES = {
         "271": "Clopton with Elsberry",
-        "272": "Cole Camp with Green Ridge",
         "331": "King City with Pattonsburg",
         "126": "Lockwood with Golden City",
-        "568": "McAuley Catholic with New Heights Christian",
         "421": "Princeton with Mercer",
         "424": "Rich Hill with Hume",
         "431": "Salisbury",
@@ -88,6 +102,15 @@ def build_id_to_classname(team_to_class, schools_csv=SCHOOLS_CSV):
         "479": "University Academy Charter",
         "204": "Van Horn",
         "206": "Vashon",
+        "20": "Appleton City with Montrose",
+        "275": "Drexel with Miami (Amoret)",
+        "575": "Renaissance Academy Charter",
+        "172": "St. James",
+        "35": "DeSoto with Kingston",
+        "917": "Father Tolton with Calvary Lutheran",
+        "342": "Liberal with Bronaugh",
+        "776": "Transportation and Law with Beaumont",
+        "483": "Van-Far with Community",
     }
  
     df = pd.read_csv(schools_csv)
@@ -500,6 +523,10 @@ if __name__ == "__main__":
         print("No games found — exiting.")
         exit(1)
  
+    if MANUAL_GAMES:
+        print(f"\nAdding {len(MANUAL_GAMES)} manual game(s)...")
+        all_games.extend(MANUAL_GAMES)
+
     print("\nDeduplicating games...")
     all_games = deduplicate_games(all_games)
  
