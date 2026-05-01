@@ -6,7 +6,7 @@ scoreboard CSV.  Any game found on the MSHSAA page that is NOT already
 in the scoreboard is flagged as a missing game.
  
 Per your requirement, only games where the OPPONENT is also a ranked
-team (in the xlsx) are checked — so out-of-ranking games are ignored.
+team (in the JSON) are checked — so out-of-ranking games are ignored.
  
 Outputs
 -------
@@ -15,7 +15,7 @@ mshsaa_school_ids.csv      – team-name to MSHSAA school ID map (for review)
  
 Requirements
 ------------
-    pip install requests beautifulsoup4 openpyxl pandas
+    pip install requests beautifulsoup4 pandas
  
 Usage
 -----
@@ -24,6 +24,7 @@ Usage
 The script politely rate-limits itself (1.5 s between requests).
 """
  
+import json
 import re
 import time
 import unicodedata
@@ -32,7 +33,7 @@ import requests
 from bs4 import BeautifulSoup
  
 # ── File paths ────────────────────────────────────────────────────────────────
-TEAMS_FILE      = "Football_Teams___Districts_-_2010_-_NEW.xlsx"
+TEAMS_FILE      = "classifications.json"
 SCOREBOARD_FILE = "football_scoreboard_2010.csv"
 OUTPUT_MISSING  = "mshsaa_missing_games.csv"
 OUTPUT_IDS      = "mshsaa_school_ids.csv"
@@ -70,14 +71,12 @@ def strip_suffix(norm_key):
 # ─────────────────────────────────────────────────────────────────────────────
  
 def load_ranked_teams(path):
-    df = pd.read_excel(path, header=1)
-    df = df.rename(columns={
-        df.columns[1]: "Team Name",
-        df.columns[2]: "Class",
-        df.columns[3]: "District",
-    })[["Team Name", "Class", "District"]]
-    df = df.dropna(subset=["Team Name"])
-    df = df[df["Team Name"].astype(str).str.strip() != "Team Name"]
+    with open(path, "r") as f:
+        data = json.load(f)
+    teams = data["teams"]
+    df = pd.DataFrame(teams)
+    # Rename to match the rest of the script
+    df = df.rename(columns={"school": "Team Name", "classification": "Class"})
     df["Team Name"] = df["Team Name"].astype(str).str.strip()
     df["norm"]      = df["Team Name"].apply(normalize)
     return df.reset_index(drop=True)
