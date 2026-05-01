@@ -183,27 +183,44 @@ def find_school_id(team_name, norm, id_map):
 def parse_schedule_page(html):
     soup  = BeautifulSoup(html, "html.parser")
     games = []
-    for tr in soup.select("tr"):
-        cells = tr.find_all("td")
-        if len(cells) < 4:
+ 
+    # Locate the schedule table by looking for the header row with Date/Opponent/Score
+    schedule_table = None
+    for table in soup.find_all("table"):
+        header_text = table.get_text()
+        if "Date" in header_text and "Opponent" in header_text and "Score" in header_text:
+            schedule_table = table
+            break
+ 
+    if not schedule_table:
+        return games
+ 
+    # Column layout (confirmed from rendered HTML):
+    # [0]=Special Designation  [1]=Date  [2]=Opponent  [3]=Outcome  [4]=Score  [5]=Matchup
+    rows = schedule_table.find_all("tr")
+    for tr in rows[1:]:   # skip header row
+        cells = tr.find_all(["td", "th"])
+        if len(cells) < 5:
             continue
  
-        date_text = cells[0].get_text(strip=True)
+        date_text  = cells[1].get_text(strip=True)
+        opp_text   = cells[2].get_text(strip=True)
+        score_text = cells[4].get_text(strip=True)
+ 
+        # Must be a real date row
         if not re.match(r"^\d{1,2}/\d{1,2}", date_text):
             continue
- 
-        row_text = tr.get_text()
-        if "Tournament" in row_text or "\u21b7" in row_text or "⤷" in row_text:
+        # Skip tournament rows
+        if "Tournament" in opp_text or "Tournament" in tr.get_text():
             continue
  
-        opp_link = cells[1].find("a")
-        if not opp_link:
-            continue
-        opp_name     = opp_link.get_text(strip=True)
-        opp_raw_text = cells[1].get_text(" ", strip=True)
-        home_away    = "away" if re.match(r"at\s", opp_raw_text.strip()) else "home"
+        # Away games: "at" is attached directly with no space — e.g. "atAva(6-5)"
+        home_away = "away" if opp_text.startswith("at") else "home"
  
-        score_text  = cells[3].get_text(strip=True)
+        # Strip leading "at" and trailing win-loss record "(W-L)"
+        opp_clean = re.sub(r"^at", "", opp_text).strip()
+        opp_clean = re.sub(r"\(\d+-\d+\)\s*$", "", opp_clean).strip()
+ 
         score_match = re.search(r"(\d+)\s*[-\u2013]\s*(\d+)", score_text)
         score_team  = int(score_match.group(1)) if score_match else None
         score_opp   = int(score_match.group(2)) if score_match else None
@@ -211,8 +228,8 @@ def parse_schedule_page(html):
         date_clean = re.match(r"(\d{1,2}/\d{1,2})", date_text).group(1)
         games.append({
             "date":          date_clean + "/2010",
-            "opponent":      opp_name,
-            "opponent_norm": normalize(opp_name),
+            "opponent":      opp_clean,
+            "opponent_norm": normalize(opp_clean),
             "home_away":     home_away,
             "score_team":    score_team,
             "score_opp":     score_opp,
@@ -340,3 +357,4 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
