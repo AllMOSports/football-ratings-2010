@@ -1,7 +1,7 @@
 name: 2010 Football Schedule Checker
  
 on:
-  workflow_dispatch:  # run manually with a button click
+  workflow_dispatch:
  
 jobs:
   check-schedules:
@@ -36,4 +36,3 @@ jobs:
           path: |
             mshsaa_missing_games.csv
             mshsaa_school_ids.csv
- 
