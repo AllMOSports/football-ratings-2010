@@ -41,6 +41,37 @@ from webdriver_manager.chrome import ChromeDriverManager
  
 # ── File paths ────────────────────────────────────────────────────────────────
 TEAMS_FILE      = "classifications.json"
+ 
+# ── Manual school ID overrides ─────────────────────────────────────────────────
+# Teams whose names don't match the MSHSAA school listing automatically.
+# Keys are the exact "Team Name" strings from classifications.json.
+# Values are the MSHSAA numeric school IDs (s= parameter in the schedule URL).
+# To find a missing ID: go to https://www.mshsaa.org/Schools/SchoolListing.aspx,
+# search for the school, then copy the s= number from its MySchool URL.
+MANUAL_ID_OVERRIDES = {
+    "Cleveland NJROTC":                    61,  # TODO: fill in correct ID
+    "Lockwood with Golden City":           126,
+    "Sweet Springs with Malta Bend":       469,
+    "Rich Hill with Hume":                 424,
+    "Princeton with Mercer":               421,
+    "St. Mary's (Independence)":           548,
+    "Wentworth Military Academy":          563,
+    "King City with Pattonsburg":          331,
+    "Barat Academy":                       781,
+    "Carnahan":                            777,
+    "Transportation and Law":              776,
+    "McAuley Catholic with New Heights Christian": 568,
+    "Clopton with Elsberry":               271,
+    "Cole Camp with Green Ridge":          272,
+    "John F. Kennedy":                     525,
+    "Imagine College Prep Charter":        51,
+    "Trinity Catholic":                    557,
+    "O'Hara":                              537,
+    "Renaissance Academy":                 575,
+    "Beaumont":                            11,
+    "SLUH":                                547,
+}
+# ──────────────────────────────────────────────────────────────────────────────
 SCOREBOARD_FILE = "football_scoreboard_2010.csv"
 OUTPUT_MISSING  = "mshsaa_missing_games.csv"
 OUTPUT_IDS      = "mshsaa_school_ids.csv"
@@ -313,7 +344,13 @@ def main():
     teams_df["school_id"] = None
     teams_df["id_found"]  = False
     for idx, row in teams_df.iterrows():
-        sid = find_school_id(row["Team Name"], row["norm"], id_map)
+        team_name = row["Team Name"]
+        # 1. Check manual overrides first
+        if team_name in MANUAL_ID_OVERRIDES:
+            sid = MANUAL_ID_OVERRIDES[team_name]
+        else:
+            # 2. Fall back to automatic lookup
+            sid = find_school_id(team_name, row["norm"], id_map)
         teams_df.at[idx, "school_id"] = sid
         teams_df.at[idx, "id_found"]  = sid is not None
  
@@ -321,8 +358,11 @@ def main():
  
     n_found = int(teams_df["id_found"].sum())
     print(f"\nSchool IDs resolved: {n_found}/{len(teams_df)}")
-    for nm in teams_df[~teams_df["id_found"]]["Team Name"].tolist():
-        print(f"  No ID found: {nm}")
+    still_missing = teams_df[~teams_df["id_found"]]["Team Name"].tolist()
+    if still_missing:
+        print("  Teams still needing a manual ID (add to MANUAL_ID_OVERRIDES):")
+        for nm in still_missing:
+            print(f"    No ID found: {nm}")
  
     print("\nStarting headless browser ...")
     driver = build_driver()
