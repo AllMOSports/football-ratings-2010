@@ -11,9 +11,9 @@ import time
 # CONFIGURATION
 # ---------------------------------------------------------------------------
  
-SEASON_YEAR   = 2010
-SEASON_START  = date(2010, 8, 1)
-SEASON_END    = date(2010, 12, 15)
+SEASON_YEAR   = 2011
+SEASON_START  = date(2011, 8, 1)
+SEASON_END    = date(2011, 12, 15)
 BASE_URL      = "https://www.mshsaa.org/activities/scoreboard.aspx?alg=19&date={}"
 MAX_POINTS    = 100
 OUTPUT_PATH   = f"football_ratings_{SEASON_YEAR}.json"
@@ -37,11 +37,32 @@ MOV_CAP               = 28    # max points of "error" any single game can contri
 # Team names must match exactly the names in classifications.json.
  
 MANUAL_GAMES = [
-    # NOTE: These are manually-added 2011 games that don't appear on the
-    # MSHSAA scoreboard. The list has been cleared for 2010 since none of
-    # the 2011 entries apply to this season. Re-populate with any 2010
-    # games missing from the scraped scoreboard, in the same format:
-    # ("YYYY-MM-DD", "Team 1 Name", score1, "Team 2 Name", score2)
+    ("2010-09-07", "Cleveland NJROTC", 16, "McCluer South-Berkeley", 6),
+    ("2010-09-29", "Cleveland NJROTC", 0, "Soldan International Studies", 26),
+    ("2010-09-07", "Valle Catholic", 20, "Ste. Genevieve", 19),
+    ("2010-10-18", "Valle Catholic", 34, "DeSoto with Kingston", 28),
+    ("2010-10-01", "Pierce City", 50, "McAuley Catholic with New Heights Christian", 0),
+    ("2010-08-27", "Cole Camp with Green Ridge", 27, "Skyline", 26),
+    ("2010-10-01", "Houston", 6, "Lockwood with Golden City", 47),
+    ("2010-09-11", "Cole Camp with Green Ridge", 48, "Lincoln", 9),
+    ("2010-09-03", "Sacred Heart", 30, "Cole Camp with Green Ridge", 54),
+    ("2010-09-17", "Windsor", 12, "Cole Camp with Green Ridge", 25),
+    ("2010-09-06", "Westran", 36, "Paris", 30),
+    ("2010-10-08", "Fayette", 8, "Cole Camp with Green Ridge", 47),
+    ("2010-09-24", "Cole Camp with Green Ridge", 36, "Slater", 21),
+    ("2010-10-01", "Slater", 6, "Marceline", 50),
+    ("2010-09-10", "McAuley Catholic with New Heights Christian", 3, "Ash Grove", 43),
+    ("2010-09-07", "Buffalo", 0, "Hollister", 6),
+    ("2010-10-22", "Diamond", 14, "McAuley Catholic with New Heights Christian", 7),
+    ("2010-10-15", "McAuley Catholic with New Heights Christian", 19, "Lamar", 56),
+    ("2010-08-27", "McAuley Catholic with New Heights Christian", 12, "Pleasant Hope", 41),
+    ("2010-10-28", "Sarcoxie", 33, "McAuley Catholic with New Heights Christian", 14),
+    ("2010-09-07", "Appleton City with Montrose", 6, "Adrian", 44),
+    ("2010-10-22", "Adrian", 21, "Cole Camp with Green Ridge", 14),
+    ("2010-10-15", "Butler", 26, "Cole Camp with Green Ridge", 13),
+    ("2010-10-01", "Cole Camp with Green Ridge", 12, "Tipton", 28),
+    ("2010-10-28", "Cole Camp with Green Ridge", 48, "Sherwood", 8),
+    ("2010-09-07", "Ozark", 21, "Carthage", 14),
 ]
  
 HEADERS = {
@@ -54,6 +75,35 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.5",
     "Referer": "https://www.mshsaa.org/"
 }
+ 
+# ---------------------------------------------------------------------------
+# HTTP SESSION (connection reuse + retry on transient failures)
+# ---------------------------------------------------------------------------
+# Days that timeout right at the 20s ceiling get one retry with a short
+# backoff before we give up on them. A shared Session reuses the underlying
+# TCP connection instead of opening a fresh one per request, which by
+# itself often reduces the frequency of these near-ceiling timeouts.
+ 
+def build_session():
+    from requests.adapters import HTTPAdapter
+    try:
+        from urllib3.util.retry import Retry
+    except ImportError:
+        from requests.packages.urllib3.util.retry import Retry
+ 
+    session = requests.Session()
+    retry = Retry(
+        total=1,                      # one retry after the first failure
+        connect=1,
+        read=1,
+        backoff_factor=1.5,           # short pause before the retry
+        status_forcelist=[500, 502, 503, 504],
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry, pool_connections=1, pool_maxsize=1)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
  
 # ---------------------------------------------------------------------------
 # CLASSIFICATIONS
@@ -196,14 +246,21 @@ def is_forfeit(c1, c2):
     return "forfeit" in (c1.get_text() + c2.get_text()).lower()
  
  
-def scrape_date(target_date, id_to_classname, known_teams):
+def scrape_date(target_date, id_to_classname, known_teams, session):
     url = BASE_URL.format(target_date.strftime("%m%d%Y"))
     try:
-        resp = requests.get(url, timeout=20, headers=HEADERS)
+        # (connect_timeout, read_timeout) -- 10s to connect, 25s to read.
+        # 25s (vs. the old flat 20s) gives borderline-slow responses (the
+        # ~20.6-20.9s ones you saw) a real chance to finish instead of
+        # being cut off right before they would have succeeded.
+        resp = session.get(url, timeout=(10, 25), headers=HEADERS)
         resp.raise_for_status()
+    except requests.exceptions.Timeout as e:
+        print(f"  TIMEOUT {target_date}: {e}")
+        return [], "timeout"
     except requests.RequestException as e:
         print(f"  Failed {target_date}: {e}")
-        return []
+        return [], "error"
  
     soup  = BeautifulSoup(resp.text, "html.parser")
     games = []
@@ -241,19 +298,48 @@ def scrape_date(target_date, id_to_classname, known_teams):
             name2, s2
         ))
  
-    return games
+    return games, None
  
  
 def scrape_full_season(id_to_classname, known_teams):
-    all_games = []
-    current   = SEASON_START
+    all_games     = []
+    current       = SEASON_START
+    scrape_t0     = time.perf_counter()
+    slow_days     = []   # (date, seconds) for anything taking > 3s
+    failed_days   = []   # (date, reason) for anything that never succeeded
+    session       = build_session()
+ 
     while current <= min(SEASON_END, date.today()):
+        day_t0 = time.perf_counter()
         print(f"  Scraping {current}...", end=" ", flush=True)
-        day_games = scrape_date(current, id_to_classname, known_teams)
+        day_games, fail_reason = scrape_date(current, id_to_classname, known_teams, session)
         all_games.extend(day_games)
-        print(f"{len(day_games)} games")
+        day_elapsed = time.perf_counter() - day_t0
+        print(f"{len(day_games)} games ({day_elapsed:.1f}s)")
+        if day_elapsed > 3.0:
+            slow_days.append((current, day_elapsed))
+        if fail_reason is not None:
+            failed_days.append((current, fail_reason))
         current += timedelta(days=1)
         time.sleep(0.5)
+ 
+    scrape_elapsed = time.perf_counter() - scrape_t0
+    print(f"\n  [TIMING] Scraping took {scrape_elapsed:.1f}s total "
+          f"for {len(all_games)} games.")
+    if slow_days:
+        print(f"  [TIMING] {len(slow_days)} slow day(s) (>3s each):")
+        for d, secs in slow_days:
+            print(f"    {d}: {secs:.1f}s")
+    if failed_days:
+        print(f"\n  *** {len(failed_days)} date(s) NEVER returned data, "
+              f"even after retry -- these dates may be missing real "
+              f"games. Check them manually against MSHSAA and add via "
+              f"MANUAL_GAMES if needed: ***")
+        for d, reason in failed_days:
+            print(f"    {d} ({reason})")
+    else:
+        print("  All dates returned successfully -- no known data gaps "
+              "from scraping failures.")
     return all_games
  
  
@@ -421,8 +507,11 @@ def calculate_ratings(all_games, iterations=ITERATIONS):
     print(f"\n  Running rating fit ({iterations} iterations, soft-weighted "
           f"by competitiveness [scale={COMPETITIVE_THRESHOLD}], "
           f"shrinkage K={REGULARIZATION_K}, MOV cap={MOV_CAP})...")
+    print(f"  [TIMING] {len(teams)} teams, {len(games)} games going into the fit.")
+    engine_t0 = time.perf_counter()
     run_iterations(games, teams, off_rating, def_rating, league_avg,
                    iterations=iterations, phase_label="Fit")
+    print(f"  [TIMING] Rating fit took {time.perf_counter() - engine_t0:.1f}s.")
  
     ovr_rating = {t: round(off_rating[t] + def_rating[t], 2) for t in teams}
     return off_rating, def_rating, ovr_rating, league_avg
