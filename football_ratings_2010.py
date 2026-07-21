@@ -11,17 +11,23 @@ import time
 # CONFIGURATION
 # ---------------------------------------------------------------------------
  
+SEASON_YEAR   = 2010
 SEASON_START  = date(2010, 8, 1)
 SEASON_END    = date(2010, 12, 15)
 BASE_URL      = "https://www.mshsaa.org/activities/scoreboard.aspx?alg=19&date={}"
 MAX_POINTS    = 100
-OUTPUT_PATH   = "football_ratings_2010.json"
-CSV_PATH      = "football_scoreboard_2010.csv"
+OUTPUT_PATH   = f"football_ratings_{SEASON_YEAR}.json"
+CSV_PATH      = f"football_scoreboard_{SEASON_YEAR}.csv"
 CLASSIFICATIONS_PATH  = "classifications.json"
 SCHOOLS_CSV           = "mshsaa_schools.csv"
 ITERATIONS            = 1000
 LEARNING_RATE         = 0.1
-COMPETITIVE_THRESHOLD = 40
+ 
+# --- v2 rating engine settings (soft weighting + shrinkage, replaces the
+#     old hard Phase-2 cutoff) ---
+COMPETITIVE_THRESHOLD = 40    # now the "half-weight" point of a smooth decay curve
+REGULARIZATION_K      = 3.0   # pseudo-games added to every team's denominator (shrinkage)
+MOV_CAP               = 28    # max points of "error" any single game can contribute
  
 # ---------------------------------------------------------------------------
 # MANUAL GAMES (not listed on MSHSAA Scoreboard)
@@ -31,54 +37,11 @@ COMPETITIVE_THRESHOLD = 40
 # Team names must match exactly the names in classifications.json.
  
 MANUAL_GAMES = [
-    ("2010-10-18", "Valle Catholic", 34, "DeSoto", 28),
-    ("2010-08-30", "Miller", 36, "Logan-Rogersville", 0),
-    ("2010-09-07", "Miller", 14, "Neosho", 8),
-    ("2010-09-13", "Miller", 46, "Jasper", 0),
-    ("2010-09-20", "Miller", 46, "Greenfield", 6),
-    ("2010-09-27", "Miller", 48, "Diamond", 0),
-    ("2010-10-11", "Miller", 30, "Springfield Catholic", 12),
-    ("2010-10-18", "Miller", 14, "Webb City", 34),
-    ("2010-09-13", "Skyline", 12, "Marionville", 6),
-    ("2010-09-20", "Skyline", 32, "Cole Camp with Green Ridge", 12),
-    ("2010-09-27", "Skyline", 8, "Strafford", 14),
-    ("2010-10-11", "Skyline", 12, "Stockton", 30),
-    ("2010-10-18", "Windsor", 0, "Cole Camp with Green Ridge", 55),
-    ("2010-09-07", "Louisiana", 6, "Palmyra", 38),
-    ("2010-09-13", "Louisiana", 0, "Clopton with Elsberry", 27),
-    ("2010-09-13", "Paris", 40, "Fayette", 6),
-    ("2010-09-20", "Paris", 24, "Hallsville", 14),
-    ("2010-09-27", "Paris", 29, "South Shelby", 14),
-    ("2010-08-30", "Caruthersville", 20, "East Prairie", 14),
-    ("2010-09-02", "Caruthersville", 32, "Dexter", 6),
-    ("2010-09-27", "Caruthersville", 22, "Charleston", 0),
-    ("2010-10-04", "Caruthersville", 28, "Kennett", 16),
-    ("2010-10-11", "Caruthersville", 0, "Sikeston", 18),
-    ("2010-10-11", "Montgomery County", 60, "Winfield", 0),
-    ("2010-09-13", "South Callaway", 16, "Southern Boone", 8),
-    ("2010-09-20", "South Callaway", 0, "Helias Catholic", 27),
-    ("2010-09-27", "South Callaway", 14, "Hallsville", 0),
-    ("2010-10-04", "South Callaway", 14, "Cuba", 22),
-    ("2010-10-11", "South Callaway", 16, "Wright City", 0),
-    ("2010-10-04", "Brookfield", 22, "Macon", 7),
-    ("2010-09-20", "Centralia", 20, "Macon", 15),
-    ("2010-09-30", "Centralia", 21, "Macon", 14),
-    ("2010-09-02", "Macon", 20, "Mexico", 0),
-    ("2010-09-16", "Macon", 19, "Palmyra", 13),
-    ("2010-09-27", "Macon", 28, "Palmyra", 7),
-    ("2010-10-11", "Macon", 42, "Monroe City", 0),
-    ("2010-10-18", "Macon", 47, "South Shelby", 34),
-    ("2010-09-07", "Adrian", 44, "Appleton City", 6),
-    ("2010-09-20", "Adrian", 6, "Harrisonville", 34),
-    ("2010-09-27", "Adrian", 28, "Osceola", 0),
-    ("2010-10-11", "Adrian", 12, "Clinton", 6),
-    ("2010-08-30", "California", 20, "Versailles", 12),
-    ("2010-09-07", "California", 32, "Osage", 0),
-    ("2010-09-20", "California", 58, "Eldon", 12),
-    ("2010-10-04", "California", 24, "North Callaway", 14),
-    ("2010-10-11", "California", 32, "Smith-Cotton", 12),
-    ("2010-09-27", "East (Kansas City)", 6, "Hogan Prep Academy Charter", 18),
-    ("2010-08-19", "McCluer", 14, "Kirkwood", 51),
+    # NOTE: These are manually-added 2011 games that don't appear on the
+    # MSHSAA scoreboard. The list has been cleared for 2010 since none of
+    # the 2011 entries apply to this season. Re-populate with any 2010
+    # games missing from the scraped scoreboard, in the same format:
+    # ("YYYY-MM-DD", "Team 1 Name", score1, "Team 2 Name", score2)
 ]
  
 HEADERS = {
@@ -376,56 +339,69 @@ def save_csv(all_games):
  
  
 # ---------------------------------------------------------------------------
-# RATING ENGINE
+# RATING ENGINE (v2 -- soft competitiveness weighting + shrinkage regularization)
 # ---------------------------------------------------------------------------
+#
+# Replaces the old two-phase (all games, then hard <=40pt cutoff) approach.
+# A dominant team no longer has its rating fully decided by 1-2 close games:
+#   1. competitiveness_weight() gives every game a smooth weight based on
+#      the current rating gap, instead of an all-or-nothing 40-point cutoff.
+#   2. REGULARIZATION_K shrinks updates for teams with little competitive
+#      signal, instead of letting a tiny sample fully drive their rating.
+#   3. MOV_CAP bounds how much error any single game -- even a fully-weighted
+#      one -- can contribute, so no one result can swing a rating too hard.
+ 
+def competitiveness_weight(gap, scale=COMPETITIVE_THRESHOLD):
+    """
+    Smooth weight in (0, 1] based on the current OVR gap between two teams.
+    gap=0            -> weight 1.0 (fully counted)
+    gap=scale (40)   -> weight 0.5 (half counted)
+    gap=2*scale (80) -> weight 0.2 (mostly discounted, never fully zero)
+    """
+    return 1.0 / (1.0 + (gap / scale) ** 2)
+ 
  
 def run_iterations(games, teams, off_rating, def_rating, league_avg,
-                   iterations, phase_label, ovr_filter=None):
+                   iterations, phase_label="Fit"):
     for iteration in range(iterations):
-        off_error    = {t: 0.0 for t in teams}
-        def_error    = {t: 0.0 for t in teams}
-        games_played = {t: 0   for t in teams}
+        off_error  = {t: 0.0 for t in teams}
+        def_error  = {t: 0.0 for t in teams}
+        weight_sum = {t: 0.0 for t in teams}
  
-        eligible_games = games
-        if ovr_filter is not None:
-            eligible_games = [
-                (t1, t2, s1, s2) for t1, t2, s1, s2 in games
-                if abs((off_rating[t1] + def_rating[t1]) -
-                       (off_rating[t2] + def_rating[t2])) <= ovr_filter
-            ]
+        for t1, t2, actual_s1, actual_s2 in games:
+            gap = abs((off_rating[t1] + def_rating[t1]) -
+                      (off_rating[t2] + def_rating[t2]))
+            w = competitiveness_weight(gap)
  
-        for t1, t2, actual_s1, actual_s2 in eligible_games:
             predicted_s1 = off_rating[t1] - def_rating[t2] + league_avg
             predicted_s2 = off_rating[t2] - def_rating[t1] + league_avg
  
             error_s1 = actual_s1 - predicted_s1
             error_s2 = actual_s2 - predicted_s2
  
-            off_error[t1] += error_s1
-            off_error[t2] += error_s2
-            def_error[t1] += -error_s2
-            def_error[t2] += -error_s1
+            # MOV cap: bound the raw error before it's weighted/accumulated
+            error_s1 = max(-MOV_CAP, min(MOV_CAP, error_s1))
+            error_s2 = max(-MOV_CAP, min(MOV_CAP, error_s2))
  
-            games_played[t1] += 1
-            games_played[t2] += 1
+            off_error[t1] += w * error_s1
+            off_error[t2] += w * error_s2
+            def_error[t1] += -w * error_s2
+            def_error[t2] += -w * error_s1
+ 
+            weight_sum[t1] += w
+            weight_sum[t2] += w
  
         for team in teams:
-            if games_played[team] > 0:
-                off_rating[team] += (
-                    (off_error[team] / games_played[team]) * LEARNING_RATE
-                )
-                def_rating[team] += (
-                    (def_error[team] / games_played[team]) * LEARNING_RATE
-                )
+            # Shrinkage: denominator is (weighted games) + K, not just raw
+            # games played. Teams with low competitive weight get smaller,
+            # more conservative updates instead of being fully driven by
+            # 1-2 games.
+            denom = weight_sum[team] + REGULARIZATION_K
+            off_rating[team] += (off_error[team] / denom) * LEARNING_RATE
+            def_rating[team] += (def_error[team] / denom) * LEARNING_RATE
  
         if (iteration + 1) % 100 == 0:
-            eligible_count = (
-                len(eligible_games) if ovr_filter is not None else len(games)
-            )
-            print(
-                f"  [{phase_label}] Iteration {iteration + 1}/{iterations} complete"
-                + (f" | Competitive games: {eligible_count}" if ovr_filter else "")
-            )
+            print(f"  [{phase_label}] Iteration {iteration + 1}/{iterations} complete")
  
  
 def calculate_ratings(all_games, iterations=ITERATIONS):
@@ -442,20 +418,14 @@ def calculate_ratings(all_games, iterations=ITERATIONS):
     off_rating = {t: 0.0 for t in teams}
     def_rating = {t: 0.0 for t in teams}
  
-    print(f"\n  Running Phase 1 ({iterations} iterations, all games)...")
+    print(f"\n  Running rating fit ({iterations} iterations, soft-weighted "
+          f"by competitiveness [scale={COMPETITIVE_THRESHOLD}], "
+          f"shrinkage K={REGULARIZATION_K}, MOV cap={MOV_CAP})...")
     run_iterations(games, teams, off_rating, def_rating, league_avg,
-                   iterations=iterations, phase_label="Phase 1", ovr_filter=None)
- 
-    print(f"\n  Running Phase 2 ({iterations} iterations, "
-          f"competitive games within {COMPETITIVE_THRESHOLD} OVR pts)...")
-    run_iterations(games, teams, off_rating, def_rating, league_avg,
-                   iterations=iterations, phase_label="Phase 2",
-                   ovr_filter=COMPETITIVE_THRESHOLD)
+                   iterations=iterations, phase_label="Fit")
  
     ovr_rating = {t: round(off_rating[t] + def_rating[t], 2) for t in teams}
     return off_rating, def_rating, ovr_rating, league_avg
- 
- 
 # ---------------------------------------------------------------------------
 # JSON OUTPUT
 # ---------------------------------------------------------------------------
@@ -526,7 +496,7 @@ def save_class_jsons(off_rating, def_rating, ovr_rating, league_avg,
             print(f"  Class {cls}: no teams found — skipping.")
             continue
  
-        path = f"football_ratings_2010_class{cls}.json"
+        path = f"football_ratings_{SEASON_YEAR}_class{cls}.json"
         output = {
             "last_updated":   datetime.now().strftime("%B %d, %Y at %I:%M %p"),
             "league_average": round(league_avg, 2),
@@ -599,10 +569,10 @@ def save_rankings_csv(off_rating, def_rating, ovr_rating,
     ])
  
     if class_filter is None:
-        path  = "football_rankings_2010_all.csv"
+        path  = f"football_rankings_{SEASON_YEAR}_all.csv"
         label = "All teams"
     else:
-        path  = f"football_rankings_2010_class{class_filter}.csv"
+        path  = f"football_rankings_{SEASON_YEAR}_class{class_filter}.csv"
         label = f"Class {class_filter}"
  
     df.to_csv(path, index=False)
@@ -625,7 +595,7 @@ def save_all_rankings_csvs(off_rating, def_rating, ovr_rating,
 # ---------------------------------------------------------------------------
  
 if __name__ == "__main__":
-    print("=== MSHSAA Football Ratings 2010 ===")
+    print(f"=== MSHSAA Football Ratings {SEASON_YEAR} ===")
  
     print("\nLoading classifications...")
     team_to_class, team_to_district = load_classifications()
