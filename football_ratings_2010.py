@@ -11,9 +11,9 @@ import time
 # CONFIGURATION
 # ---------------------------------------------------------------------------
  
-SEASON_YEAR   = 2019
-SEASON_START  = date(2019, 8, 1)
-SEASON_END    = date(2019, 12, 15)
+SEASON_YEAR   = 2010
+SEASON_START  = date(2010, 8, 1)
+SEASON_END    = date(2010, 12, 15)
 BASE_URL      = "https://www.mshsaa.org/activities/scoreboard.aspx?alg=19&date={}"
 MAX_POINTS    = 100
 OUTPUT_PATH   = f"football_ratings_{SEASON_YEAR}.json"
@@ -37,12 +37,12 @@ MOV_CAP               = 28    # max points of "error" any single game can contri
 # Team names must match exactly the names in classifications.json.
  
 MANUAL_GAMES = [
-    # Added from 2019_Missing_Games.xlsx (games missing from MSHSAA scoreboard).
-    # TODO: the spreadsheet had no date column -- replace "2019-XX-XX" below
+    # Added from 2010_Missing_Games.xlsx (games missing from MSHSAA scoreboard).
+    # TODO: the spreadsheet had no date column -- replace "2010-XX-XX" below
     # with each game's actual date once you have it. Dates don't affect the
     # rating math (calculate_ratings() ignores them entirely), but they do
     # feed the scoreboard CSV and the dedup key, so they should be corrected
-    # before treating football_scoreboard_2019.csv as authoritative.
+    # before treating football_scoreboard_2010.csv as authoritative.
     ("2010-08-01", "Bishop DuBourg", 21, "John F. Kennedy", 7),
     ("2010-08-01", "Bishop DuBourg", 29, "Lutheran St. Charles", 21),
     ("2010-08-01", "Central (Kansas City)", 14, "Washington", 6),
