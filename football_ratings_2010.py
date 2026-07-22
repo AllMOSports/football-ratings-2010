@@ -11,9 +11,9 @@ import time
 # CONFIGURATION
 # ---------------------------------------------------------------------------
  
-SEASON_YEAR   = 2010
-SEASON_START  = date(2010, 8, 1)
-SEASON_END    = date(2010, 12, 15)
+SEASON_YEAR   = 2019
+SEASON_START  = date(2019, 8, 1)
+SEASON_END    = date(2019, 12, 15)
 BASE_URL      = "https://www.mshsaa.org/activities/scoreboard.aspx?alg=19&date={}"
 MAX_POINTS    = 100
 OUTPUT_PATH   = f"football_ratings_{SEASON_YEAR}.json"
@@ -37,11 +37,27 @@ MOV_CAP               = 28    # max points of "error" any single game can contri
 # Team names must match exactly the names in classifications.json.
  
 MANUAL_GAMES = [
-    # NOTE: These are manually-added 2011 games that don't appear on the
-    # MSHSAA scoreboard. The list has been cleared for 2010 since none of
-    # the 2011 entries apply to this season. Re-populate with any 2010
-    # games missing from the scraped scoreboard, in the same format:
-    # ("YYYY-MM-DD", "Team 1 Name", score1, "Team 2 Name", score2)
+    # Added from 2019_Missing_Games.xlsx (games missing from MSHSAA scoreboard).
+    # TODO: the spreadsheet had no date column -- replace "2019-XX-XX" below
+    # with each game's actual date once you have it. Dates don't affect the
+    # rating math (calculate_ratings() ignores them entirely), but they do
+    # feed the scoreboard CSV and the dedup key, so they should be corrected
+    # before treating football_scoreboard_2019.csv as authoritative.
+    ("2010-08-01", "Bishop DuBourg", 21, "John F. Kennedy", 7),
+    ("2010-08-01", "Bishop DuBourg", 29, "Lutheran St. Charles", 21),
+    ("2010-08-01", "Central (Kansas City)", 14, "Washington", 6),
+    ("2010-08-01", "Drexel", 50, "Northeast (Kansas City)", 0),
+    ("2010-08-01", "East Prairie", 41, "Grandview (Hillsboro)", 8),
+    ("2010-08-01", "Grain Valley", 6, "Cameron", 0),
+    ("2010-08-01", "Grandview (Hillsboro)", 14, "St. Pius X (Festus)", 7),
+    ("2010-08-01", "John F. Kennedy", 10, "Trinity Catholic", 7),
+    ("2010-08-01", "Lutheran St. Charles", 35, "John F. Kennedy", 0),
+    ("2010-08-01", "Marceline", 50, "Slater", 6),
+    ("2010-08-01", "Miller Career Academy", 38, "Mt. Vernon", 7),
+    ("2010-08-01", "Trinity Catholic", 41, "Bishop DuBourg", 10),
+    ("2010-08-01", "Trinity Catholic", 52, "Imagine College Prep Charter", 6),
+    ("2010-08-01", "Trinity Catholic", 50, "Lutheran St. Charles", 0),
+    ("2010-08-01", "University Academy Charter", 15, "Washington", 6),
 ]
  
 HEADERS = {
