@@ -1,5 +1,5 @@
 {
-  "last_updated": "July 21, 2026 at 01:08 AM",
+  "last_updated": "July 22, 2026 at 12:13 AM",
   "league_average": 24.79,
   "teams": [
     {
@@ -741,17 +741,6 @@
     },
     {
       "ovr_rank": 68,
-      "school": "Farmington",
-      "classification": 4,
-      "district": 1,
-      "ovr_rating": 21.57,
-      "off_rating": 18.48,
-      "off_rank": 32,
-      "def_rating": 3.09,
-      "def_rank": 137
-    },
-    {
-      "ovr_rank": 69,
       "school": "Joplin",
       "classification": 6,
       "district": 8,
@@ -760,6 +749,17 @@
       "off_rank": 49,
       "def_rating": 7.79,
       "def_rank": 94
+    },
+    {
+      "ovr_rank": 69,
+      "school": "Farmington",
+      "classification": 4,
+      "district": 1,
+      "ovr_rating": 21.57,
+      "off_rating": 18.48,
+      "off_rank": 32,
+      "def_rating": 3.09,
+      "def_rank": 137
     },
     {
       "ovr_rank": 70,
