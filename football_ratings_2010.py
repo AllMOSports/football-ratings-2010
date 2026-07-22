@@ -11,9 +11,9 @@ import time
 # CONFIGURATION
 # ---------------------------------------------------------------------------
  
-SEASON_YEAR   = 2011
-SEASON_START  = date(2011, 8, 1)
-SEASON_END    = date(2011, 12, 15)
+SEASON_YEAR   = 2010
+SEASON_START  = date(2010, 8, 1)
+SEASON_END    = date(2010, 12, 15)
 BASE_URL      = "https://www.mshsaa.org/activities/scoreboard.aspx?alg=19&date={}"
 MAX_POINTS    = 100
 OUTPUT_PATH   = f"football_ratings_{SEASON_YEAR}.json"
@@ -37,32 +37,11 @@ MOV_CAP               = 28    # max points of "error" any single game can contri
 # Team names must match exactly the names in classifications.json.
  
 MANUAL_GAMES = [
-    ("2010-09-07", "Cleveland NJROTC", 16, "McCluer South-Berkeley", 6),
-    ("2010-09-29", "Cleveland NJROTC", 0, "Soldan International Studies", 26),
-    ("2010-09-07", "Valle Catholic", 20, "Ste. Genevieve", 19),
-    ("2010-10-18", "Valle Catholic", 34, "DeSoto with Kingston", 28),
-    ("2010-10-01", "Pierce City", 50, "McAuley Catholic with New Heights Christian", 0),
-    ("2010-08-27", "Cole Camp with Green Ridge", 27, "Skyline", 26),
-    ("2010-10-01", "Houston", 6, "Lockwood with Golden City", 47),
-    ("2010-09-11", "Cole Camp with Green Ridge", 48, "Lincoln", 9),
-    ("2010-09-03", "Sacred Heart", 30, "Cole Camp with Green Ridge", 54),
-    ("2010-09-17", "Windsor", 12, "Cole Camp with Green Ridge", 25),
-    ("2010-09-06", "Westran", 36, "Paris", 30),
-    ("2010-10-08", "Fayette", 8, "Cole Camp with Green Ridge", 47),
-    ("2010-09-24", "Cole Camp with Green Ridge", 36, "Slater", 21),
-    ("2010-10-01", "Slater", 6, "Marceline", 50),
-    ("2010-09-10", "McAuley Catholic with New Heights Christian", 3, "Ash Grove", 43),
-    ("2010-09-07", "Buffalo", 0, "Hollister", 6),
-    ("2010-10-22", "Diamond", 14, "McAuley Catholic with New Heights Christian", 7),
-    ("2010-10-15", "McAuley Catholic with New Heights Christian", 19, "Lamar", 56),
-    ("2010-08-27", "McAuley Catholic with New Heights Christian", 12, "Pleasant Hope", 41),
-    ("2010-10-28", "Sarcoxie", 33, "McAuley Catholic with New Heights Christian", 14),
-    ("2010-09-07", "Appleton City with Montrose", 6, "Adrian", 44),
-    ("2010-10-22", "Adrian", 21, "Cole Camp with Green Ridge", 14),
-    ("2010-10-15", "Butler", 26, "Cole Camp with Green Ridge", 13),
-    ("2010-10-01", "Cole Camp with Green Ridge", 12, "Tipton", 28),
-    ("2010-10-28", "Cole Camp with Green Ridge", 48, "Sherwood", 8),
-    ("2010-09-07", "Ozark", 21, "Carthage", 14),
+    # NOTE: These are manually-added 2011 games that don't appear on the
+    # MSHSAA scoreboard. The list has been cleared for 2010 since none of
+    # the 2011 entries apply to this season. Re-populate with any 2010
+    # games missing from the scraped scoreboard, in the same format:
+    # ("YYYY-MM-DD", "Team 1 Name", score1, "Team 2 Name", score2)
 ]
  
 HEADERS = {
