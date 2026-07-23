@@ -221,7 +221,7 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-03,Caruthersville,35,Kennett,6
 2010-09-03,Rolla,22,Kickapoo,20
 2010-09-03,Chillicothe,37,Kirksville,20
-2010-09-03,Lexington,27,Knob Noster,96
+2010-09-03,Lexington,27,Knob Noster,0
 2010-09-03,Paris,28,Knox County,6
 2010-09-03,Odessa,40,Lafayette (St. Joseph),55
 2010-09-03,Lindbergh,48,Lafayette (Wildwood),10
@@ -371,7 +371,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-10,Francis Howell Central,12,Holt,42
 2010-09-10,Mountain Grove,48,Houston,0
 2010-09-10,North County,0,Jackson,17
-2010-09-10,Ozark,0,Kearney,0
 2010-09-10,Mt. Vernon,24,Lamar,35
 2010-09-10,Raytown South,12,Lee's Summit,21
 2010-09-10,Raymore-Peculiar,28,Liberty,24
@@ -636,7 +635,6 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-09-18,Transportation and Law with Beaumont,25,Sumner,6
 2010-09-18,Sacred Heart,28,Wentworth Military Academy,18
 2010-09-23,Hillcrest,28,Glendale,16
-2010-09-23,Joplin,16,Liberal with Bronaugh,26
 2010-09-23,Rock Port,6,St. Mary's (Independence),13
 2010-09-24,Rich Hill with Hume,8,Adrian,61
 2010-09-24,Windsor,39,Appleton City with Montrose,15
@@ -1067,7 +1065,7 @@ Date,Home Team,Home Score,Away Team,Away Score
 2010-10-08,Hillcrest,17,Rolla,38
 2010-10-08,Raymore-Peculiar,46,Ruskin,8
 2010-10-08,Cabool,0,Salem,48
-2010-10-08,North Shelby,53,Scotland County,13
+2010-10-08,North Shelby,13,Scotland County,53
 2010-10-08,Hayti,52,Scott City,14
 2010-10-08,Aurora,7,Seneca,27
 2010-10-08,St. Mary's (Independence),26,Sherwood,42
